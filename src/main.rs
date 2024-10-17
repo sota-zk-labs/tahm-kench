@@ -1,7 +1,9 @@
-mod update_notifier;
+mod auction;
+mod core_error;
 
 use clap::CommandFactory;
 use clap::{Parser, Subcommand};
+use crate::auction::create_auction;
 
 /// TAHKEN
 #[derive(Parser, Debug)]
@@ -80,7 +82,7 @@ async fn main() {
                 return;
             }
             Commands::CreateAuction {public_key} => {
-                println!("Create auction with public_key: {}", public_key);
+                create_auction(&public_key).await;
                 return;
             }
             Commands::ListAuctions => {
