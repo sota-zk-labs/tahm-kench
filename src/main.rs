@@ -1,9 +1,7 @@
-mod auction;
 mod core_error;
 
 use clap::CommandFactory;
 use clap::{Parser, Subcommand};
-use crate::auction::create_auction;
 
 /// TAHKEN
 #[derive(Parser, Debug)]
