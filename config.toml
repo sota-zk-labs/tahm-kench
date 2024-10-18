@@ -1,0 +1,5 @@
+#log_level = "info"
+#keystore_path = "/home/ubuntu/.foundry/keystores/wallet_zk_auction"
+[chain]
+etherscan_api_key= "2G4MBDIY1RNFHVZS27HR1KKVBHCX8YJ7WE"
+rpc_url = "https://ethereum-holesky-rpc.publicnode.com"
