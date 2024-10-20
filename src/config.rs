@@ -1,5 +1,5 @@
-use clap::Parser;
 use config::{Config as ConfigLoader, File, FileFormat};
+use ethers::types::H160;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -11,7 +11,8 @@ pub struct ChainConfig {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
-    pub chain: ChainConfig
+    pub chain: ChainConfig,
+    pub contract_address: H160,
 }
 
 impl Config {
@@ -24,4 +25,3 @@ impl Config {
         Ok(config)
     }
 }
-

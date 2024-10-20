@@ -1,20 +1,16 @@
-mod core_error;
-mod config;
-
-use std::sync::Arc;
-use config::Config;
+use anyhow::{Context, Result};
 use clap::CommandFactory;
 use clap::{Parser, Subcommand};
 use ethers::prelude::*;
 use ethers::providers::{Http, Provider};
 use ethers::signers::{LocalWallet, Signer};
-use ethers::types::{Address, Bytes, H160, U256};
+use ethers::types::Bytes;
 
+use crate::auction::{create_new_auction, get_auction, get_total_auction};
 
-abigen!(
-    zkAuctionContract,
-    "./src/assets/ZkAuction.json"
-);
+mod auction;
+mod config;
+
 /// TAHKEN
 #[derive(Parser, Debug)]
 #[command(name = "tahken")]
@@ -26,8 +22,12 @@ struct Cli {
     version: bool,
     #[clap(short, long, default_value = "config.toml")]
     config_path: String,
-    /// Keystore path
-    #[clap(short, long)]
+    /// Path of local wallet
+    #[clap(
+        short,
+        long,
+        default_value = "/home/ubuntu/.foundry/keystores/wallet_zk_auction"
+    )]
     keystore_path: String,
 }
 #[derive(Subcommand, Clone, Debug, PartialEq)]
@@ -35,13 +35,22 @@ enum Commands {
     /// Print current version
     Version,
     /// Create auction session
-    CreateAuction,
+    CreateAuction {
+        #[arg(short, long)]
+        name: String,
+        #[arg(short, long, default_value = "")]
+        description: String,
+        #[arg(short, long)]
+        target_price: U256,
+        #[arg(short, long, default_value = "1")]
+        time: u64,
+    },
     /// Get list auctions opening
     ListAuctions,
     /// Get detail auctions
     GetAuctions {
         #[arg(short, long)]
-        id_auction: i32,
+        id_auction: U256,
     },
     /// Bid item
     Bid {
@@ -61,76 +70,92 @@ enum Commands {
     Claim {
         #[arg(short, long)]
         id: i32,
-    }
+    },
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     let args = Cli::parse();
-    let config = Config::new(&args.config_path).expect("Config env not set");
+    let config = config::Config::new(&args.config_path).expect("Config env not set");
 
     let rpc_url = &config.chain.rpc_url;
-    let provider = Provider::<Http>::try_from(rpc_url.as_str()).expect("Failed to connect to provider");
-    let chain_id = provider.get_chainid().await.expect("Failed to get chain_id");
+    let provider =
+        Provider::<Http>::try_from(rpc_url.as_str()).expect("Failed to connect to provider");
+    let chain_id = provider
+        .get_chainid()
+        .await
+        .expect("Failed to get chain_id");
 
     let keystore_password = rpassword::prompt_password("Enter keystore password: ")
         .expect("Failed to read keystore password");
-    println!("key: {:?}", &args.keystore_path);
     let wallet = LocalWallet::decrypt_keystore(&args.keystore_path, &keystore_password)
         .expect("Failed to decrypt keystore")
         .with_chain_id(chain_id.as_u64());
 
-    // Get the public key and address
-    let address = wallet.address();
-    let public_key_bytes = wallet.signer().verifying_key().to_encoded_point(false);
-    let public_key_hex = hex::encode(public_key_bytes);
+    let private_key = wallet.signer();
+    let public_key = private_key.verifying_key();
+    // Convert the public key to Bytes
+    let public_key_bytes = Bytes::from(public_key.to_encoded_point(false).as_ref().to_vec());
 
     let signer = SignerMiddleware::new(provider.clone(), wallet.clone());
-    let client = Arc::new(signer);
 
     match args.command {
         Some(command) => match command {
             Commands::Version => {
                 println!("version 1.0");
-                return;
+                Ok(())
             }
-            Commands::CreateAuction => {
-                create_auction(client.clone()).await;
-                return;
+            Commands::CreateAuction {
+                name,
+                description,
+                target_price,
+                time,
+            } => {
+                let duration = U256::from(time * 3600);
+                let _ = create_new_auction(
+                    signer,
+                    &config.contract_address,
+                    public_key_bytes,
+                    name,
+                    description,
+                    target_price,
+                    duration,
+                )
+                .await
+                .context("Failed to create auction");
+                Ok(())
             }
             Commands::ListAuctions => {
-                println!("have 3 auction opening");
-                return;
+                let _ = get_total_auction(signer, &config.contract_address)
+                    .await
+                    .context("Failed to get total auction");
+                Ok(())
             }
             Commands::GetAuctions { id_auction } => {
-                println!("detail of id_auction: {}", id_auction);
-                return;
+                let _ = get_auction(signer, &config.contract_address, id_auction)
+                    .await
+                    .context(format!("Failed to get auction with id: {}", id_auction));
+                Ok(())
             }
             Commands::Bid { price, id_auction } => {
-                println!("bid itam with: (price: {}, id_auction: {})", price, id_auction);
-                return;
+                println!(
+                    "bid item with: (price: {}, id_auction: {})",
+                    price, id_auction
+                );
+                Ok(())
             }
             Commands::Submit { id, private_key } => {
                 println!("submit with: (id: {}, private_key: {})", id, private_key);
-                return;
+                Ok(())
             }
             Commands::Claim { id } => {
                 println!("claim item: {}", id);
-                return;
+                Ok(())
             }
         },
         None => {
             Cli::command().print_help().unwrap();
-            return;
+            Ok(())
         }
     }
 }
-
-async fn create_auction(client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>) {
-    let contract_address = "0xaa80ab74e426a0d2c19178db78649eebd05d05c5".parse::<Address>().unwrap();
-    let contract = zkAuctionContract::new(contract_address, client);
-
-    let zk_count = contract.auction_count().call().await.unwrap();
-    println!("zk_count: {:?}", zk_count);
-}
-
