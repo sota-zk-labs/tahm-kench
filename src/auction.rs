@@ -5,31 +5,6 @@ use ethers::prelude::{Http, LocalWallet, Provider};
 use ethers::types::{Address, Bytes, U256};
 abigen!(zkAuctionContract, "./src/assets/ZkAuction.json");
 
-// pub struct Asset {
-//     name: String,
-//     description: String
-// }
-//
-// pub struct Bid {
-//     bidder: Address,
-//     encrypted_price: Bytes
-// }
-//
-// pub struct Winner {
-//     winner: Address,
-//     encrypted_price: Bytes
-// }
-//
-// pub struct Auction {
-//     owner: Address,
-//     owner_public_key: Bytes,
-//     asset: Asset,
-//     winner: Winner,
-//     deposit_price: U256,
-//     end_time: U256,
-//     ended: bool,
-// }
-
 pub async fn get_auction(
     signer: SignerMiddleware<Provider<Http>, LocalWallet>,
     contract_address: &Address,
@@ -37,19 +12,18 @@ pub async fn get_auction(
 ) -> Result<()> {
     let contract = zkAuctionContract::new(*contract_address, signer.into());
     let auction = contract.auctions(id_auction).call().await?;
-    let (seller, data, asset, winner, start_time, end_time, is_active) = auction;
+    let (seller, pk, asset, winner, deposit_price, end_time, ended) = auction;
     println!("Auction Details:");
+    println!("Name: {}", asset.name);
     println!("Seller: {:?}", seller);
-    println!("Data: {:?}", data);
-    println!("Asset:");
-    println!("  Name: {}", asset.name);
-    println!("  Description: {}", asset.description);
+    println!("Seller's public key: {:?}", pk);
+    println!("Description: {}", asset.description);
     println!("Winner:");
     println!("  Address: {:?}", winner.winner);
     println!("  Encrypted Price: {:?}", winner.encrypted_price);
-    println!("Start Time: {:?}", start_time);
-    println!("End Time: {:?}", end_time);
-    println!("Is Active: {}", is_active);
+    println!("Deposit price: {:?} USDT", deposit_price.low_u128());
+    println!("End Time: {:?}", end_time.low_u128());
+    println!("Ended: {}", ended);
     Ok(())
 }
 
@@ -59,7 +33,7 @@ pub async fn get_total_auction(
 ) -> Result<()> {
     let contract = zkAuctionContract::new(*contract_address, signer.into());
     let total = contract.auction_count().call().await?;
-    println!("Autions total: {:?}", total);
+    println!("Auctions total: {:?}", total);
     Ok(())
 }
 
