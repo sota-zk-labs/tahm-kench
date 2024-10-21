@@ -1,6 +1,6 @@
 #![no_main]
 
-use aligned_sp1_prover::{decrypt_bidder_data, AuctionData, BidderDecryptedData, PVK_PEM};
+use aligned_sp1_prover::{decrypt_bidder_data, AuctionData, PVK_PEM};
 use rsa::pkcs8::DecodePrivateKey;
 use rsa::RsaPrivateKey;
 use tiny_keccak::{Hasher, Keccak};
@@ -13,11 +13,11 @@ pub fn main() {
     let pvk = RsaPrivateKey::from_pkcs8_pem(PVK_PEM).expect("missing private key to encode bidder data");
 
     let mut winner_addr = &vec![];
-    let mut winner_data = BidderDecryptedData { amount: 0, timestamp: 0 };
+    let mut winner_amount = 0;
     for bidder in &auction_data.bidders {
-        let bidder_data = decrypt_bidder_data(&pvk, bidder);
-        if (winner_data.amount < bidder_data.amount) || (winner_data.amount == bidder_data.amount && winner_data.timestamp > bidder_data.timestamp) {
-            winner_data = bidder_data;
+        let bidder_amount = decrypt_bidder_data(&pvk, bidder);
+        if winner_amount < bidder_amount {
+            winner_amount = bidder_amount;
             winner_addr = &bidder.address;
         }
     }
@@ -33,7 +33,7 @@ fn calc_auction_hash(auction_data: &AuctionData) -> [u8; 32] {
     input.extend(&auction_data.id);
     for bidder in &auction_data.bidders {
         input.extend(&bidder.address);
-        input.extend(&bidder.encrypted_data);
+        input.extend(&bidder.encrypted_amount);
     }
 
     let mut output = [0u8; 32];

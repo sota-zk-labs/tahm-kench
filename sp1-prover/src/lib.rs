@@ -11,44 +11,22 @@ pub struct AuctionData {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Bidder {
-    pub encrypted_data: Vec<u8>,
+    pub encrypted_amount: Vec<u8>,
     pub address: Vec<u8>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct BidderDecryptedData {
-    pub amount: u128,
-    pub timestamp: u64,
-}
-
-impl From<String> for BidderDecryptedData {
-    fn from(value: String) -> Self {
-        let data = value.split(',').collect::<Vec<&str>>();
-        BidderDecryptedData {
-            amount: data[0].parse().unwrap(),
-            timestamp: data[1].parse().unwrap(),
-        }
-    }
-}
-
-impl From<&BidderDecryptedData> for String {
-    fn from(value: &BidderDecryptedData) -> Self {
-        format!("{},{}", value.amount, value.timestamp)
-    }
-}
-
-pub fn decrypt_bidder_data(pvk: &RsaPrivateKey, bidder: &Bidder) -> BidderDecryptedData {
+pub fn decrypt_bidder_data(pvk: &RsaPrivateKey, bidder: &Bidder) -> u128 {
     let data = String::from_utf8(
-        pvk.decrypt(Pkcs1v15Encrypt, &bidder.encrypted_data)
+        pvk.decrypt(Pkcs1v15Encrypt, &bidder.encrypted_amount)
             .expect("failed to decrypt"),
     )
     .unwrap();
-    data.into()
+    data.parse().unwrap()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{AuctionData, Bidder, BidderDecryptedData, PVK_PEM};
+    use crate::{AuctionData, Bidder, PVK_PEM};
     use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding};
     use rsa::rand_core::OsRng;
     use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
@@ -83,23 +61,11 @@ mod tests {
         stdin.write(&AuctionData {
             bidders: vec![
                 Bidder {
-                    encrypted_data: encrypt_bidder_data(
-                        &BidderDecryptedData {
-                            amount: 2,
-                            timestamp: 10,
-                        },
-                        &pbk,
-                    ),
+                    encrypted_amount: encrypt_bidder_amount(&2, &pbk),
                     address: vec![5; 32],
                 },
                 Bidder {
-                    encrypted_data: encrypt_bidder_data(
-                        &BidderDecryptedData {
-                            amount: 1,
-                            timestamp: 5,
-                        },
-                        &pbk,
-                    ),
+                    encrypted_amount: encrypt_bidder_amount(&1, &pbk),
                     address: vec![1; 32],
                 },
             ],
@@ -131,24 +97,18 @@ mod tests {
         let pvk = RsaPrivateKey::from_pkcs8_pem(PVK_PEM).unwrap();
         let pbk = pvk.to_public_key();
         let bidder = Bidder {
-            encrypted_data: encrypt_bidder_data(
-                &BidderDecryptedData {
-                    amount: 1e23 as u128,
-                    timestamp: 1e10 as u64,
-                },
-                &pbk,
-            ),
+            encrypted_amount: encrypt_bidder_amount(&(1e23 as u128), &pbk),
             address: vec![0; 32],
         };
-        let decrypted_data = super::decrypt_bidder_data(&pvk, &bidder);
-        assert_eq!(decrypted_data.timestamp, 1e10 as u64);
+        let amount = super::decrypt_bidder_data(&pvk, &bidder);
+        assert_eq!(amount, 1e23 as u128);
     }
 
     #[test]
     fn test_gen_key() {
         // Generate a 2048-bit RSA private key
         let mut rng = OsRng;
-        let bit_size = env::var("BIT_SIZE").unwrap_or("361".to_string()).parse().unwrap();
+        let bit_size = env::var("BIT_SIZE").unwrap_or("90".to_string()).parse().unwrap();
         println!("Bit size: {}", bit_size);
         let private_key =
             RsaPrivateKey::new(&mut rng, bit_size)
@@ -173,8 +133,8 @@ mod tests {
         println!("Public Key:\n{}", public_key_pem);
     }
 
-    fn encrypt_bidder_data(data: &BidderDecryptedData, pbk: &RsaPublicKey) -> Vec<u8> {
-        let data = String::from(data);
+    fn encrypt_bidder_amount(amount: &u128, pbk: &RsaPublicKey) -> Vec<u8> {
+        let data = amount.to_string();
         pbk.encrypt(&mut OsRng, Pkcs1v15Encrypt, data.as_bytes())
             .expect("failed to encrypt bidder data")
     }
