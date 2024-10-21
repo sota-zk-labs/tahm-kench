@@ -5,8 +5,6 @@ use serde::Deserialize;
 #[derive(Deserialize, Debug, Clone)]
 pub struct ChainConfig {
     pub rpc_url: String,
-    // pub etherscan_api_key: String
-    // pub network:
 }
 
 #[derive(Deserialize, Debug, Clone)]

@@ -3258,6 +3258,7 @@ dependencies = [
  "ethers",
  "glob",
  "hex",
+ "home",
  "rpassword",
  "serde",
  "serde_derive",

@@ -11,6 +11,12 @@ if [ -f .env ]; then
   export $(cat .env | xargs)
 fi
 
+# Check if LOCK_TOKEN_ADDRESS is set
+if [ -z "$LOCK_TOKEN_ADDRESS" ]; then
+  echo "Error: LOCK_TOKEN_ADDRESS is not set. Please set it in .env or pass it as a one argument.."
+  exit 1
+fi
+
 # Check if PRIVATE_KEY is set
 if [ -z "$PRIVATE_KEY" ]; then
   echo "Error: PRIVATE_KEY is not set. Please set it in .env or pass it as a second argument.."
@@ -35,10 +41,12 @@ forge build
 
 # Run the deployment script
 echo "Deploying Contract..."
-forge script script/Deployer.s.sol \
+forge script script/deployer.s.sol \
+  "$LOCK_TOKEN_ADDRESS" \
   --rpc-url $RPC_URL \
   --private-key $PRIVATE_KEY \
-  --broadcast
+  --broadcast \
+  --sig "run(address _lockToken)"
 
 # Check if deployment was successful
 if [ $? -eq 0 ]; then

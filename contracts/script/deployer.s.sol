@@ -2,18 +2,18 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "forge-std/Script.sol";
-import {ZkAuction} from "../src/ZkAuction.sol";
+import {ZkAuction} from "../src/zk_auction.sol";
 
 contract DeployScript is Script {
     function setUp() public {}
 
-    function run() external returns (address) {
+    function run(address _lockToken) external returns (address) {
         vm.startBroadcast();
 
-        ZkAuction zk_auction = new ZkAuction();
+        ZkAuction new_zk_auction = new ZkAuction(_lockToken);
 
         vm.stopBroadcast();
 
-        return address(zk_auction);
+        return address(new_zk_auction);
     }
 }

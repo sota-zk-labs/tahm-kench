@@ -5,13 +5,13 @@ use ethers::prelude::*;
 use ethers::providers::{Http, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Bytes;
+use home::home_dir;
 
-use crate::auction::{create_new_auction, get_auction, get_total_auction};
+use crate::auction::{create_bid, create_new_auction, get_auction, get_total_auction};
 
 mod auction;
 mod config;
 
-/// TAHKEN
 #[derive(Parser, Debug)]
 #[command(name = "tahken")]
 #[command(about, long_about = None)]
@@ -23,11 +23,7 @@ struct Cli {
     #[clap(short, long, default_value = "config.toml")]
     config_path: String,
     /// Path of local wallet
-    #[clap(
-        short,
-        long,
-        default_value = "/home/ubuntu/.foundry/keystores/wallet_zk_auction"
-    )]
+    #[clap(short, long, default_value = ".zk_auction/keystores/wallet_zk_auction")]
     keystore_path: String,
 }
 #[derive(Subcommand, Clone, Debug, PartialEq)]
@@ -41,6 +37,10 @@ enum Commands {
         #[arg(short, long, default_value = "")]
         description: String,
         #[arg(short, long)]
+        nft_contract_address: Address,
+        #[arg(short, long)]
+        token_id: U256,
+        #[arg(short, long)]
         target_price: U256,
         #[arg(short, long, default_value = "1")]
         time: u64,
@@ -48,16 +48,16 @@ enum Commands {
     /// Get list auctions opening
     ListAuctions,
     /// Get detail auctions
-    GetAuctions {
+    GetAuction {
         #[arg(short, long)]
         id_auction: U256,
     },
     /// Bid item
     Bid {
         #[arg(short, long)]
-        price: i32,
+        price: U256,
         #[arg(short, long)]
-        id_auction: i32,
+        id_auction: U256,
     },
     /// Submit
     Submit {
@@ -76,7 +76,19 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
-    let config = config::Config::new(&args.config_path).expect("Config env not set");
+
+    if args.version {
+        println!(
+            "{:?}",
+            std::env::var("CARGO_PKG_VERSION").unwrap_or_default()
+        );
+        return Ok(());
+    }
+
+    let config = config::Config::new(&args.config_path).expect(&format!(
+        "Failed to load config from {:?}",
+        &args.config_path
+    ));
 
     let rpc_url = &config.chain.rpc_url;
     let provider =
@@ -88,7 +100,10 @@ async fn main() -> Result<()> {
 
     let keystore_password = rpassword::prompt_password("Enter keystore password: ")
         .expect("Failed to read keystore password");
-    let wallet = LocalWallet::decrypt_keystore(&args.keystore_path, &keystore_password)
+
+    let home_dir = home_dir().expect("Failed to get home directory");
+    let path = home_dir.join(&args.keystore_path);
+    let wallet = LocalWallet::decrypt_keystore(path, &keystore_password)
         .expect("Failed to decrypt keystore")
         .with_chain_id(chain_id.as_u64());
 
@@ -102,12 +117,17 @@ async fn main() -> Result<()> {
     match args.command {
         Some(command) => match command {
             Commands::Version => {
-                println!("version 1.0");
+                println!(
+                    "{:?}",
+                    std::env::var("CARGO_PKG_VERSION").unwrap_or_default()
+                );
                 Ok(())
             }
             Commands::CreateAuction {
                 name,
                 description,
+                nft_contract_address,
+                token_id,
                 target_price,
                 time,
             } => {
@@ -118,6 +138,8 @@ async fn main() -> Result<()> {
                     public_key_bytes,
                     name,
                     description,
+                    nft_contract_address,
+                    token_id,
                     target_price,
                     duration,
                 )
@@ -131,17 +153,16 @@ async fn main() -> Result<()> {
                     .context("Failed to get total auction");
                 Ok(())
             }
-            Commands::GetAuctions { id_auction } => {
+            Commands::GetAuction { id_auction } => {
                 let _ = get_auction(signer, &config.contract_address, id_auction)
                     .await
                     .context(format!("Failed to get auction with id: {}", id_auction));
                 Ok(())
             }
             Commands::Bid { price, id_auction } => {
-                println!(
-                    "bid item with: (price: {}, id_auction: {})",
-                    price, id_auction
-                );
+                let _ = create_bid(signer, &config.contract_address, id_auction, price)
+                    .await
+                    .context(format!("Failed to bid auction with id: {}", id_auction));
                 Ok(())
             }
             Commands::Submit { id, private_key } => {

@@ -1,4 +1,5 @@
-contract_address = "0xaa80ab74e426a0d2c19178db78649eebd05d05c5"
+contract_address = "0xe9aad76249b425bff2eeef8d284ae6b772d657b7"
+
 [chain]
 etherscan_api_key = "2G4MBDIY1RNFHVZS27HR1KKVBHCX8YJ7WE"
 rpc_url = "https://ethereum-holesky-rpc.publicnode.com"
