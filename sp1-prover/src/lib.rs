@@ -1,7 +1,7 @@
-use rsa::{Pkcs1v15Encrypt, RsaPrivateKey};
+use ecies::SecretKey;
 use serde::{Deserialize, Serialize};
 
-pub const PVK_PEM: &str = include_str!("../pvk.pem");
+pub const PVK_HEX: &str = include_str!("../pvk");
 
 #[derive(Deserialize, Serialize)]
 pub struct AuctionData {
@@ -15,26 +15,31 @@ pub struct Bidder {
     pub address: Vec<u8>,
 }
 
-pub fn decrypt_bidder_data(pvk: &RsaPrivateKey, bidder: &Bidder) -> u128 {
+pub fn decrypt_bidder_data(pvk: &SecretKey, bidder: &Bidder) -> u128 {
     let data = String::from_utf8(
-        pvk.decrypt(Pkcs1v15Encrypt, &bidder.encrypted_amount)
+        ecies::decrypt(&pvk.serialize(), &bidder.encrypted_amount)
             .expect("failed to decrypt"),
     )
-    .unwrap();
+        .unwrap();
     data.parse().unwrap()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{AuctionData, Bidder, PVK_PEM};
-    use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding};
-    use rsa::rand_core::OsRng;
-    use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
+    use std::fs;
+    use crate::{AuctionData, Bidder, PVK_HEX};
+    // use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding};
+    // use rsa::rand_core::OsRng;
+    // use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
     use sp1_sdk::{ProverClient, SP1Stdin};
-    use std::env;
+    // use std::env;
     use std::fs::File;
     use std::io::Read;
     use std::process::Command;
+    use ecies::{PublicKey, SecretKey};
+    use rand::rngs::{OsRng};
+    // use ecies_ed25519::generate_keypair;
+    // use rand::{CryptoRng, RngCore};
 
     #[test]
     fn test_sp1_prover() {
@@ -53,9 +58,8 @@ mod tests {
             buffer
         };
 
-        let pvk = RsaPrivateKey::from_pkcs8_pem(PVK_PEM)
-            .expect("missing private key to encode bidder data");
-        let pbk = pvk.to_public_key();
+        // let mut rng = rand::thread_rng();
+        let (_, pbk) = get_key();
 
         let mut stdin = SP1Stdin::new();
         stdin.write(&AuctionData {
@@ -94,8 +98,8 @@ mod tests {
 
     #[test]
     fn test_decrypt_data() {
-        let pvk = RsaPrivateKey::from_pkcs8_pem(PVK_PEM).unwrap();
-        let pbk = pvk.to_public_key();
+        let (pvk, pbk) = get_key();
+        // let mut rng = rand::thread_rng();
         let bidder = Bidder {
             encrypted_amount: encrypt_bidder_amount(&(1e23 as u128), &pbk),
             address: vec![0; 32],
@@ -106,36 +110,24 @@ mod tests {
 
     #[test]
     fn test_gen_key() {
-        // Generate a 2048-bit RSA private key
         let mut rng = OsRng;
-        let bit_size = env::var("BIT_SIZE").unwrap_or("90".to_string()).parse().unwrap();
-        println!("Bit size: {}", bit_size);
-        let private_key =
-            RsaPrivateKey::new(&mut rng, bit_size)
-                .expect("failed to generate a key");
-
-        // Extract the public key from the private key
-        let public_key = RsaPublicKey::from(&private_key);
-
-        // Print the private key in PEM format
-        let private_key_pem = private_key
-            .to_pkcs8_pem(LineEnding::LF)
-            .expect("failed to encode private key to PEM")
-            .to_string();
-        std::fs::write("pvk.pem", &private_key_pem).expect("failed to write private key to file"); // write this to file
-        println!("Private Key:\n{}", private_key_pem);
-
-        // Print the public key in PEM format
-        let public_key_pem = public_key
-            .to_public_key_pem(LineEnding::LF)
-            .expect("failed to encode public key to PEM");
-        std::fs::write("pbk.pem", &public_key_pem).expect("failed to write public key to file");
-        println!("Public Key:\n{}", public_key_pem);
+        let pvk = SecretKey::random(&mut rng);
+        let pbk = PublicKey::from_secret_key(&pvk);
+        let pvk = hex::encode(pvk.serialize());
+        let pbk = hex::encode(pbk.serialize());
+        println!("Private key: {}", &pvk);
+        println!("Public key: {}", &pbk);
+        fs::write("pvk", pvk).expect("failed to write private key to file");
+        fs::write("pbk", pbk).expect("failed to write public key to file");
     }
 
-    fn encrypt_bidder_amount(amount: &u128, pbk: &RsaPublicKey) -> Vec<u8> {
+    fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
         let data = amount.to_string();
-        pbk.encrypt(&mut OsRng, Pkcs1v15Encrypt, data.as_bytes())
-            .expect("failed to encrypt bidder data")
+        ecies::encrypt(&pbk.serialize(), data.as_bytes()).expect("failed to encrypt bidder data")
+    }
+
+    fn get_key() -> (SecretKey, PublicKey) {
+        let pvk = SecretKey::parse_slice(&hex::decode(PVK_HEX).unwrap()).expect("fail to read private key");
+        (pvk, PublicKey::from_secret_key(&pvk))
     }
 }

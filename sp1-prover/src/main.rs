@@ -1,8 +1,9 @@
 #![no_main]
 
-use aligned_sp1_prover::{decrypt_bidder_data, AuctionData, PVK_PEM};
-use rsa::pkcs8::DecodePrivateKey;
-use rsa::RsaPrivateKey;
+use ecies::SecretKey;
+use aligned_sp1_prover::{decrypt_bidder_data, AuctionData, PVK_HEX};
+// use rsa::pkcs8::DecodePrivateKey;
+// use rsa::RsaPrivateKey;
 use tiny_keccak::{Hasher, Keccak};
 
 sp1_zkvm::entrypoint!(main);
@@ -10,8 +11,9 @@ sp1_zkvm::entrypoint!(main);
 pub fn main() {
     let auction_data = sp1_zkvm::io::read::<AuctionData>();
 
-    let pvk = RsaPrivateKey::from_pkcs8_pem(PVK_PEM).expect("missing private key to encode bidder data");
-
+    let pvk = SecretKey::parse_slice(&hex::decode(PVK_HEX).unwrap())
+        .expect("missing private key to encode bidder data");
+    
     let mut winner_addr = &vec![];
     let mut winner_amount = 0;
     for bidder in &auction_data.bidders {
