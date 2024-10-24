@@ -7,9 +7,7 @@ use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Bytes;
 use home::home_dir;
 
-use crate::auction_service::{
-    create_bid, create_new_auction, get_auction, get_total_auction, withdraw,
-};
+use crate::auction_service::{create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw};
 
 mod auction_service;
 mod config;
@@ -65,7 +63,7 @@ enum Commands {
     /// Reveal winner
     RevealWinner {
         #[arg(short, long)]
-        id: i32,
+        auction_id: U256,
         #[arg(short, long)]
         private_key: Bytes,
     },
@@ -174,8 +172,13 @@ async fn main() -> Result<()> {
                 .context(format!("Failed to bid auction with id: {}", auction_id));
                 Ok(())
             }
-            Commands::RevealWinner { id, private_key } => {
-                println!("submit with: (id: {}, private_key: {})", id, private_key);
+            Commands::RevealWinner { auction_id, private_key } => {
+                let _ = reveal_winner(signer, config.contract_address, auction_id, private_key)
+                    .await
+                    .context(format!(
+                        "Failed to reveal winner of auction with id: {}",
+                        auction_id
+                    ));
                 Ok(())
             }
             Commands::Withdraw { auction_id } => {

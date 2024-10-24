@@ -1,21 +1,22 @@
 use ethers::types::{Address, Bytes, U256};
 #[derive(Debug, Clone)]
-pub struct Auction {
+pub struct AuctionEntity {
     pub owner: Address,          // Owner of the auction
     pub owner_public_key: Bytes, // Owner's public key
-    pub asset: Asset,            // Asset being auctioned
+    pub asset: AssetEntity,            // Asset being auctioned
     pub winner: Winner,          // Winner of the auction
     pub deposit_price: U256,     // Deposit price when bidder start bid
     pub end_time: U256,          // Time when the bid phase end
     pub ended: bool,             // Status of the auction
 }
 #[derive(Debug, Clone)]
-pub struct Bid {
+#[allow(dead_code)]
+pub struct BidEntity {
     pub bidder: Address,        // Address of the bidder
     pub encrypted_price: Bytes, // Encrypted price submitted of bidder
 }
 #[derive(Debug, Clone)]
-pub struct Asset {
+pub struct AssetEntity {
     pub name: String,                  // Name of the asset
     pub description: String,           // Description of the asset
     pub nft_contract_address: Address, // Address of nft contract
@@ -28,7 +29,7 @@ pub struct Winner {
     pub price: U256,             // Price submitted of winner
 }
 
-impl Auction {
+impl AuctionEntity {
     pub fn print_info(&self) {
         println!("Auction Details:");
         println!("Name: {}", self.asset.name);
@@ -49,7 +50,3 @@ impl Auction {
         println!("Ended: {}", self.ended);
     }
 }
-
-// impl Into<> forBid {
-//
-// }
