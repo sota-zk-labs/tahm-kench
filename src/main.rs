@@ -7,7 +7,9 @@ use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Bytes;
 use home::home_dir;
 
-use crate::auction_service::{create_bid, create_new_auction, get_auction, get_total_auction};
+use crate::auction_service::{
+    create_bid, create_new_auction, get_auction, get_total_auction, withdraw,
+};
 
 mod auction_service;
 mod config;
@@ -161,9 +163,15 @@ async fn main() -> Result<()> {
                 Ok(())
             }
             Commands::Bid { price, auction_id } => {
-                let _ = create_bid(signer, config.contract_address, config.token_address, auction_id, price)
-                    .await
-                    .context(format!("Failed to bid auction with id: {}", auction_id));
+                let _ = create_bid(
+                    signer,
+                    config.contract_address,
+                    config.token_address,
+                    auction_id,
+                    price,
+                )
+                .await
+                .context(format!("Failed to bid auction with id: {}", auction_id));
                 Ok(())
             }
             Commands::RevealWinner { id, private_key } => {
@@ -171,7 +179,12 @@ async fn main() -> Result<()> {
                 Ok(())
             }
             Commands::Withdraw { auction_id } => {
-                println!("withdraw");
+                let _ = withdraw(signer, config.contract_address, auction_id)
+                    .await
+                    .context(format!(
+                        "Failed to withdraw from auction with id: {}",
+                        auction_id
+                    ));
                 Ok(())
             }
         },

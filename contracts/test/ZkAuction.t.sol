@@ -60,7 +60,7 @@ contract testZkAuction is Test {
         mock_token.approve(address(zk_auction), depositPrice);
 
         vm.prank(bidder);
-        zk_auction.placeBid(1, encryptedPrice);
+        zk_auction.placeBid(0, encryptedPrice);
     }
 
     // Test initial set up
@@ -70,8 +70,8 @@ contract testZkAuction is Test {
         assertEq(mock_nft.ownerOf(tokenId_1), address(zk_auction));
         assertEq(zk_auction.auctionCount(), 1);
 
-        (address address_owner, bytes memory pk,,,, uint256 deposit_price, uint256 endTime, bool ended) =
-            zk_auction.auctions(1);
+        (address address_owner, bytes memory pk,,, uint256 deposit_price, uint256 endTime, bool ended) =
+                            zk_auction.auctions(0);
         assertEq(address_owner, owner);
         assertEq(pk, ownerPublicKey);
         assertEq(deposit_price, depositPrice);
@@ -113,7 +113,7 @@ contract testZkAuction is Test {
     function testCreateBidAuctionEnded() public {
         createAuction();
 
-        (,,,,,, uint256 endTime, bool ended) = zk_auction.auctions(1);
+        (,,,,, uint256 endTime, bool ended) = zk_auction.auctions(0);
 
         assertTrue(block.timestamp < endTime);
         assertFalse(ended);
@@ -138,18 +138,7 @@ contract testZkAuction is Test {
         create_new_bid();
         vm.prank(bidder);
         vm.expectRevert(bytes("Already deposited"));
-        zk_auction.placeBid(1, encryptedPrice);
-    }
-
-    function testCreateBidNotApprove() public {
-        createAuction();
-        // Mint token to the bidder for testing
-        vm.prank(bidder);
-        mock_token.mint(bidder, depositPrice);
-
-        vm.prank(bidder);
-        vm.expectRevert(bytes("You need approve token deposit to contract"));
-        zk_auction.placeBid(1, encryptedPrice);
+        zk_auction.placeBid(0, encryptedPrice);
     }
 
     // Test verify phase

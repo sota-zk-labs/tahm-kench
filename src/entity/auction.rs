@@ -4,12 +4,10 @@ pub struct Auction {
     pub owner: Address,          // Owner of the auction
     pub owner_public_key: Bytes, // Owner's public key
     pub asset: Asset,            // Asset being auctioned
-    pub item: Item,              // The item to be auction
-    // pub Bid[] bids, // Array of bids placed on the auction
-    pub winner: Winner,      // Winner of the auction
-    pub deposit_price: U256, // Deposit price when bidder start bid
-    pub end_time: U256,      // Time when the bid phase end
-    pub ended: bool,         // Status of the auction
+    pub winner: Winner,          // Winner of the auction
+    pub deposit_price: U256,     // Deposit price when bidder start bid
+    pub end_time: U256,          // Time when the bid phase end
+    pub ended: bool,             // Status of the auction
 }
 #[derive(Debug, Clone)]
 pub struct Bid {
@@ -18,15 +16,12 @@ pub struct Bid {
 }
 #[derive(Debug, Clone)]
 pub struct Asset {
-    pub name: String,        // Name of the asset
-    pub description: String, // Description of the asset
-}
-
-#[derive(Debug, Clone)]
-pub struct Item {
+    pub name: String,                  // Name of the asset
+    pub description: String,           // Description of the asset
     pub nft_contract_address: Address, // Address of nft contract
     pub token_id: U256,                // Id nft
 }
+
 #[derive(Debug, Clone)]
 pub struct Winner {
     pub winner_address: Address, // Address of the winner
@@ -43,9 +38,9 @@ impl Auction {
         println!("Item:");
         println!(
             "  Address of NFT Contract: {:?}",
-            self.item.nft_contract_address
+            self.asset.nft_contract_address
         );
-        println!("  Token ID: {:?}", self.item.token_id);
+        println!("  Token ID: {:?}", self.asset.token_id);
         println!("Winner:");
         println!("  Address: {:?}", self.winner.winner_address);
         println!("  Encrypted Price: {:?}", self.winner.price);
@@ -54,3 +49,7 @@ impl Auction {
         println!("Ended: {}", self.ended);
     }
 }
+
+// impl Into<> forBid {
+//
+// }
