@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "forge-std/Script.sol";
-import {ZkAuction} from "../src/zk_auction.sol";
+import {ZkAuction} from "../src/ZkAuction.sol";
 
 contract DeployScript is Script {
     function setUp() public {}

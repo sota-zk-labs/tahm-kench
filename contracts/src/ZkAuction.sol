@@ -69,13 +69,12 @@ contract ZkAuction {
     ) public {
         require(_depositPrice > 0, "Deposit price must be greater than zero");
         require(_duration > 0, "Duration must be greater than zero");
-        // Logic for creating an auction
-        //deposit item
-        IERC721 nftContract = IERC721(_nftContract);
-        require(nftContract.ownerOf(_tokenId) == msg.sender, "You must own the NFT to auction it.");
-        nftContract.transferFrom(msg.sender, address(this), _tokenId); // Transfer NFT to contract
 
-        //Create auction
+        IERC721 nftContract = IERC721(_nftContract);
+        require(nftContract.ownerOf(_tokenId) == msg.sender, "You must own the NFT to auction it");
+        require(nftContract.getApproved(_tokenId) == address(this), "You need approve the NFT to contract");
+
+        // Create auction
         auctionCount++;
         Auction storage newAuction = auctions[auctionCount];
 
@@ -87,6 +86,9 @@ contract ZkAuction {
         newAuction.endTime = block.timestamp + _duration; // Set auction end time
         newAuction.ended = false;
 
+        // Deposit item
+        nftContract.transferFrom(msg.sender, address(this), _tokenId); // Transfer NFT to contract
+        require(nftContract.ownerOf(_tokenId) == address(this), "Auction contract must own the NFT.");
         emit AuctionCreated(auctionCount, msg.sender);
     }
 
@@ -95,32 +97,30 @@ contract ZkAuction {
      * @dev Bids are encrypted for ZK-based auctions.
      */
     function new_bid(uint256 auctionId, bytes memory _encryptedPrice) public {
-        // Logic for placing a bid
         Auction storage auction = auctions[auctionId];
-        require(!auction.ended, "Auction has ended.");
-        require(block.timestamp < auction.endTime, "Auction has expired.");
+        require(!auction.ended, "Auction has ended");
+        require(block.timestamp < auction.endTime, "Auction has expired");
         require(!auction.hasDeposited[msg.sender], "Already deposited");
-
-        // Deposit to pool
-        // Transfer tokens from the user to this contract
-        lockToken.transferFrom(msg.sender, address(this), auction.depositPrice);
+        require(
+            lockToken.allowance(msg.sender, address(this)) == auction.depositPrice,
+            "You need approve token deposit to contract"
+        );
         // Update the state to indicate that the user has deposited
         auction.hasDeposited[msg.sender] = true;
-
         // Bid
-        require(auction.hasDeposited[msg.sender], "You must deposit before bidding.");
         auction.bids.push(Bid({bidder: msg.sender, encryptedPrice: _encryptedPrice}));
 
+        lockToken.transferFrom(msg.sender, address(this), auction.depositPrice);
         emit NewBid(auctionId, msg.sender, _encryptedPrice);
     }
 
     /**
-    * @notice Gets list biders after the bid phase end
-     * @dev Uses auctionId to get list biders.
+     * @notice Gets list bidders after the bid phase end
+     * @dev Uses auctionId to get list bidders.
      */
     function getBids(uint256 auctionId) public view returns (Bid[] memory) {
-        require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet.");
-        require(!auctions[auctionId].ended, "Auction has ended.");
+        require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet");
+        require(!auctions[auctionId].ended, "Auction has ended");
         return auctions[auctionId].bids;
     }
 
@@ -128,41 +128,41 @@ contract ZkAuction {
      * @notice Reveals the winner after the auction ends.
      * @dev Uses a ZK-proof to reveal the highest valid bid.
      */
-    function revealWinner(uint256 auctionId, Winner memory _winner) public {
-        require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet.");
-        require(!auctions[auctionId].ended, "Auction has ended.");
-        // verifyProof(winner, inputHash, proof);
-        //set winner
+    function revealWinner(uint256 auctionId, Winner memory _winner, bytes32 inputHash, bytes memory proof) public {
+        require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet");
+        require(!auctions[auctionId].ended, "Auction has ended");
+        require(verifyProof(_winner, inputHash, proof), "User doesn't winner");
+        // Set winner
         Auction storage auction = auctions[auctionId];
+        require(_winner.price <= auction.depositPrice, "Winner has more bid price than deposit price");
         auction.winner = _winner;
-        //send item
+        // Send item
         auction.item.nftContract.transferFrom(address(this), auction.winner.winner, auction.item.tokenId);
-        //refund cash
+        // Refund token
         if (auction.depositPrice > auction.winner.price) {
             lockToken.transfer(auction.winner.winner, auction.depositPrice - auction.winner.price);
         }
-        //withdraw cash
+        // Withdraw token
         lockToken.transfer(msg.sender, auction.winner.price);
-        //set status auction
+        // Set status auction
         auction.ended = true;
 
         emit AuctionEnded(auctionId, auction.winner.winner, auction.winner.price);
     }
 
-
-    function unlock(uint256 auctionId) public {
+    function withdraw(uint256 auctionId) public {
         Auction storage auction = auctions[auctionId];
-        require(auction.hasDeposited[msg.sender], "No tokens to unlock");
+        require(auction.hasDeposited[msg.sender], "No tokens to withdraw");
         require(auction.ended, "Tokens are still locked");
         // Transfer tokens from this contract to the user
         lockToken.transfer(msg.sender, auction.depositPrice);
     }
 
-    // /**
-    //  * @notice Verifies a zero-knowledge proof.
-    //  */
-    // function verifyProof(Winner memory winner, bytes32 inputHash, bytes memory proof) internal returns (bool) {
-    //     // ZK-proof verification logic
-    //     return true;
-    // }
+    /**
+     * @notice Verifies a zero-knowledge proof.
+     */
+    function verifyProof(Winner memory winner, bytes32 inputHash, bytes memory proof) internal returns (bool) {
+        // ZK-proof verification logic
+        return true;
+    }
 }

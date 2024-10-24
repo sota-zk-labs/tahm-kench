@@ -7,7 +7,7 @@ use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Bytes;
 use home::home_dir;
 
-use crate::auction::{create_bid, create_new_auction, get_auction, get_total_auction};
+use crate::auction::{create_bid, create_new_auction, get_auction, get_total_auction, list_bid};
 
 mod auction;
 mod config;
@@ -50,14 +50,19 @@ enum Commands {
     /// Get detail auctions
     GetAuction {
         #[arg(short, long)]
-        id_auction: U256,
+        auction_id: U256,
     },
     /// Bid item
     Bid {
         #[arg(short, long)]
         price: U256,
         #[arg(short, long)]
-        id_auction: U256,
+        auction_id: U256,
+    },
+    /// Get list bid
+    ListBids {
+        #[arg(short, long)]
+        auction_id: U256,
     },
     /// Submit
     Submit {
@@ -65,11 +70,6 @@ enum Commands {
         id: i32,
         #[arg(short, long)]
         private_key: Bytes,
-    },
-    /// Claim item
-    Claim {
-        #[arg(short, long)]
-        id: i32,
     },
 }
 
@@ -153,24 +153,24 @@ async fn main() -> Result<()> {
                     .context("Failed to get total auction");
                 Ok(())
             }
-            Commands::GetAuction { id_auction } => {
-                let _ = get_auction(signer, &config.contract_address, id_auction)
+            Commands::GetAuction { auction_id } => {
+                let _ = get_auction(signer, &config.contract_address, auction_id)
                     .await
-                    .context(format!("Failed to get auction with id: {}", id_auction));
+                    .context(format!("Failed to get auction with id: {}", auction_id));
                 Ok(())
             }
-            Commands::Bid { price, id_auction } => {
-                let _ = create_bid(signer, &config.contract_address, id_auction, price)
+            Commands::Bid { price, auction_id } => {
+                let _ = create_bid(signer, &config.contract_address, auction_id, price)
                     .await
-                    .context(format!("Failed to bid auction with id: {}", id_auction));
+                    .context(format!("Failed to bid auction with id: {}", auction_id));
+                Ok(())
+            }
+            Commands::ListBids { auction_id } => {
+                let _ = list_bid(auction_id);
                 Ok(())
             }
             Commands::Submit { id, private_key } => {
                 println!("submit with: (id: {}, private_key: {})", id, private_key);
-                Ok(())
-            }
-            Commands::Claim { id } => {
-                println!("claim item: {}", id);
                 Ok(())
             }
         },
