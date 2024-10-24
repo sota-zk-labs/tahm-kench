@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import {Test, console} from "forge-std/Test.sol";
 import {ZkAuction} from "../src/ZkAuction.sol";
-import {MockToken} from "../src/Mock/MockToken.sol";
-import {MockNFT} from "../src/Mock/MockNFT.sol";
+import {MockToken} from "../src/mocks/MockToken.sol";
+import {MockNFT} from "../src/mocks/MockNFT.sol";
 
 contract testZkAuction is Test {
     ZkAuction public zk_auction;
@@ -60,7 +60,7 @@ contract testZkAuction is Test {
         mock_token.approve(address(zk_auction), depositPrice);
 
         vm.prank(bidder);
-        zk_auction.new_bid(1, encryptedPrice);
+        zk_auction.placeBid(1, encryptedPrice);
     }
 
     // Test initial set up
@@ -130,7 +130,7 @@ contract testZkAuction is Test {
         vm.warp(block.timestamp + duration + 1);
         vm.prank(bidder);
         vm.expectRevert(bytes("Auction has expired"));
-        zk_auction.new_bid(1, encryptedPrice);
+        zk_auction.placeBid(1, encryptedPrice);
     }
 
     function testDoubleCreateBid() public {
@@ -138,7 +138,7 @@ contract testZkAuction is Test {
         create_new_bid();
         vm.prank(bidder);
         vm.expectRevert(bytes("Already deposited"));
-        zk_auction.new_bid(1, encryptedPrice);
+        zk_auction.placeBid(1, encryptedPrice);
     }
 
     function testCreateBidNotApprove() public {
@@ -149,7 +149,7 @@ contract testZkAuction is Test {
 
         vm.prank(bidder);
         vm.expectRevert(bytes("You need approve token deposit to contract"));
-        zk_auction.new_bid(1, encryptedPrice);
+        zk_auction.placeBid(1, encryptedPrice);
     }
 
     // Test verify phase

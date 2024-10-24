@@ -3,8 +3,11 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract ZkAuction {
+    using SafeERC20 for IERC20;
+
     IERC20 public immutable lockToken; // The token to be locked
 
     struct Auction {
@@ -87,8 +90,7 @@ contract ZkAuction {
         newAuction.ended = false;
 
         // Deposit item
-        nftContract.transferFrom(msg.sender, address(this), _tokenId); // Transfer NFT to contract
-        require(nftContract.ownerOf(_tokenId) == address(this), "Auction contract must own the NFT.");
+        nftContract.safeTransferFrom(msg.sender, address(this), _tokenId); // Transfer NFT to contract
         emit AuctionCreated(auctionCount, msg.sender);
     }
 
@@ -96,21 +98,17 @@ contract ZkAuction {
      * @notice Allows users to place bids.
      * @dev Bids are encrypted for ZK-based auctions.
      */
-    function new_bid(uint256 auctionId, bytes memory _encryptedPrice) public {
+    function placeBid(uint256 auctionId, bytes memory _encryptedPrice) public {
         Auction storage auction = auctions[auctionId];
         require(!auction.ended, "Auction has ended");
         require(block.timestamp < auction.endTime, "Auction has expired");
         require(!auction.hasDeposited[msg.sender], "Already deposited");
-        require(
-            lockToken.allowance(msg.sender, address(this)) == auction.depositPrice,
-            "You need approve token deposit to contract"
-        );
         // Update the state to indicate that the user has deposited
         auction.hasDeposited[msg.sender] = true;
         // Bid
         auction.bids.push(Bid({bidder: msg.sender, encryptedPrice: _encryptedPrice}));
 
-        lockToken.transferFrom(msg.sender, address(this), auction.depositPrice);
+        lockToken.safeTransferFrom(msg.sender, address(this), auction.depositPrice);
         emit NewBid(auctionId, msg.sender, _encryptedPrice);
     }
 
@@ -128,24 +126,24 @@ contract ZkAuction {
      * @notice Reveals the winner after the auction ends.
      * @dev Uses a ZK-proof to reveal the highest valid bid.
      */
-    function revealWinner(uint256 auctionId, Winner memory _winner, bytes32 inputHash, bytes memory proof) public {
+    function finalizeAuction(uint256 auctionId, Winner memory _winner, bytes32 inputHash, bytes memory proof) public {
         require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet");
         require(!auctions[auctionId].ended, "Auction has ended");
-        require(verifyProof(_winner, inputHash, proof), "User doesn't winner");
+        require(_verifyProof(_winner, inputHash, proof), "User doesn't winner");
         // Set winner
         Auction storage auction = auctions[auctionId];
         require(_winner.price <= auction.depositPrice, "Winner has more bid price than deposit price");
         auction.winner = _winner;
+        auction.ended = true;
         // Send item
-        auction.item.nftContract.transferFrom(address(this), auction.winner.winner, auction.item.tokenId);
+        auction.item.nftContract.safeTransferFrom(address(this), auction.winner.winner, auction.item.tokenId);
         // Refund token
         if (auction.depositPrice > auction.winner.price) {
-            lockToken.transfer(auction.winner.winner, auction.depositPrice - auction.winner.price);
+            lockToken.safeTransfer(auction.winner.winner, auction.depositPrice - auction.winner.price);
         }
         // Withdraw token
-        lockToken.transfer(msg.sender, auction.winner.price);
+        lockToken.safeTransfer(msg.sender, auction.winner.price);
         // Set status auction
-        auction.ended = true;
 
         emit AuctionEnded(auctionId, auction.winner.winner, auction.winner.price);
     }
@@ -155,13 +153,13 @@ contract ZkAuction {
         require(auction.hasDeposited[msg.sender], "No tokens to withdraw");
         require(auction.ended, "Tokens are still locked");
         // Transfer tokens from this contract to the user
-        lockToken.transfer(msg.sender, auction.depositPrice);
+        lockToken.safeTransfer(msg.sender, auction.depositPrice);
     }
 
     /**
      * @notice Verifies a zero-knowledge proof.
      */
-    function verifyProof(Winner memory winner, bytes32 inputHash, bytes memory proof) internal returns (bool) {
+    function _verifyProof(Winner memory winner, bytes32 inputHash, bytes memory proof) internal returns (bool) {
         // ZK-proof verification logic
         return true;
     }
