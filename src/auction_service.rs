@@ -7,26 +7,14 @@ use ethers::prelude::{Http, LocalWallet, Provider};
 use ethers::types::{Address, Bytes, U256};
 
 abigen!(zkAuction, "./src/assets/zk_auction.json");
+abigen!(erc721Contract, "./src/assets/erc721.json");
+abigen!(erc20Contract, "./src/assets/erc20.json");
 
-// pub async fn approve_nft(
-//     signer: SignerMiddleware<Provider<Http>, LocalWallet>,
-//     contract_address: &Address,
-//     nft_contract_address: &Address,
-//     token_id: U256
-// ) -> Result<()> {
-//     let auction_contract = zkAuction::new(*contract_address, signer.into());
-//     let nft_contract = Contract::new(nft_contract_address, ERC721_ABI.clone(), signer.clone());
-//
-//
-//
-//     println!("Transaction successful: {:?}", receipt);
-//     Ok(())
-//
-// }
+
 
 pub async fn create_new_auction(
     signer: SignerMiddleware<Provider<Http>, LocalWallet>,
-    contract_address: &Address,
+    auction_contract_address: Address,
     public_key_hex: Bytes,
     name: String,
     description: String,
@@ -35,8 +23,14 @@ pub async fn create_new_auction(
     target_price: U256,
     duration: U256,
 ) -> Result<()> {
-    let contract = zkAuction::new(*contract_address, signer.into());
-    let contract_caller = contract.create_auction(
+    // Approve NFT
+    let erc721_contract = erc721Contract::new(nft_contract_address, signer.clone().into());
+    let approve_tx = erc721_contract.approve(auction_contract_address, token_id).send().await?;
+    let _ = approve_tx.await?.unwrap();
+
+    // Create Auction
+    let zk_auction_contract = zkAuction::new(auction_contract_address, signer.into());
+    let contract_caller = zk_auction_contract.create_auction(
         public_key_hex,
         nft_contract_address,
         token_id,
@@ -57,10 +51,10 @@ pub async fn create_new_auction(
 
 pub async fn get_auction(
     signer: SignerMiddleware<Provider<Http>, LocalWallet>,
-    contract_address: &Address,
+    auction_contract_address: Address,
     auction_id: U256,
 ) -> Result<()> {
-    let contract = zkAuction::new(*contract_address, signer.into());
+    let contract = zkAuction::new(auction_contract_address, signer.into());
     let auction = contract.auctions(auction_id).call().await?;
     let (seller, pk, asset, item, winner, deposit_price, end_time, ended) = auction;
     println!("Auction Details:");
@@ -82,9 +76,9 @@ pub async fn get_auction(
 
 pub async fn get_total_auction(
     signer: SignerMiddleware<Provider<Http>, LocalWallet>,
-    contract_address: &Address,
+    auction_contract_address: Address,
 ) -> Result<()> {
-    let contract = zkAuction::new(*contract_address, signer.into());
+    let contract = zkAuction::new(auction_contract_address, signer.into());
     let total = contract.auction_count().call().await?;
     println!("Auctions total: {:?}", total);
     Ok(())
@@ -93,19 +87,28 @@ pub async fn get_total_auction(
 // pub fn encrypt_price(bid_price: U256) -> Bytes {
 //
 // }
-pub async fn approve_deposit() {}
+
 pub async fn create_bid(
     signer: SignerMiddleware<Provider<Http>, LocalWallet>,
-    contract_address: &Address,
+    auction_contract_address: Address,
+    token_address: Address,
     auction_id: U256,
     bid_price: U256,
 ) -> Result<()> {
+    // Approve token
+    let erc20_contract = erc20Contract::new(token_address, signer.clone().into());
+    let approve_tx = erc20_contract.approve(auction_contract_address, token_id).send().await?;
+    let _ = approve_tx.await?.unwrap();
+
+    // Fake encrypted price
     let covert_price: [u8; 32] = bid_price.into();
     let covert_price_hex = hex::encode(covert_price);
     let covert_price_bytes: Bytes = hex::decode(&covert_price_hex)
         .expect("Failed to decode hex string") // Handle potential errors
         .into(); // Convert Vec<u8> to Bytes
-    let contract = zkAuction::new(*contract_address, signer.into());
+
+    // Create bid
+    let contract = zkAuction::new(contract_address, signer.into());
     let contract_caller = contract.new_bid(auction_id, covert_price_bytes);
     let tx = contract_caller.send().await?;
     let receipt = tx.await?.unwrap();
