@@ -136,12 +136,10 @@ pub async fn get_list_bids(
     let bids = contract.get_bids(auction_id).call().await?;
     let list_bids: Vec<_> = bids
         .iter()
-        .map(|element|
-            BidEntity {
-                bidder: element.bidder,
-                encrypted_price: element.encrypted_price.clone(),
-            }
-        )
+        .map(|element| BidEntity {
+            bidder: element.bidder,
+            encrypted_price: element.encrypted_price.clone(),
+        })
         .collect();
     Ok(list_bids)
 }
@@ -162,7 +160,6 @@ pub async fn reveal_winner(
     //Send to SP1
     println!("private_key: {}", private_key);
 
-
     // // Submit proof to SMC
     // let winner = Winner{
     //     winner_address: Default::default(),
@@ -171,7 +168,8 @@ pub async fn reveal_winner(
     let array: [u8; 32] = [0; 32]; // Example array
 
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
-    let contract_caller = contract.finalize_auction(auction_id, Default::default(), array, Default::default());
+    let contract_caller =
+        contract.finalize_auction(auction_id, Default::default(), array, Default::default());
     let tx = contract_caller.send().await?;
     let receipt = tx.await?.unwrap();
     let tx_hash = receipt.transaction_hash;

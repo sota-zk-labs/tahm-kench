@@ -6,12 +6,10 @@ use ethers::providers::{Http, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Bytes;
 use home::home_dir;
-
-use crate::auction_service::{create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw};
-
-mod auction_service;
-mod config;
-mod entity;
+use tahm_kench_cli::auction_service::{
+    create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
+};
+use tahm_kench_cli::config::Config;
 
 #[derive(Parser, Debug)]
 #[command(name = "tahken")]
@@ -51,7 +49,7 @@ enum Commands {
         #[arg(short, long)]
         auction_id: U256,
     },
-    /// Get list auctions opening
+    /// Get total auctions
     ListAuctions,
     /// Bid item
     Bid {
@@ -86,7 +84,7 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    let config = config::Config::new(&args.config_path).expect(&format!(
+    let config = Config::new(&args.config_path).expect(&format!(
         "Failed to load config from {:?}",
         &args.config_path
     ));
@@ -172,7 +170,10 @@ async fn main() -> Result<()> {
                 .context(format!("Failed to bid auction with id: {}", auction_id));
                 Ok(())
             }
-            Commands::RevealWinner { auction_id, private_key } => {
+            Commands::RevealWinner {
+                auction_id,
+                private_key,
+            } => {
                 let _ = reveal_winner(signer, config.contract_address, auction_id, private_key)
                     .await
                     .context(format!(
