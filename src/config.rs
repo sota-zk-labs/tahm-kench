@@ -11,6 +11,7 @@ pub struct ChainConfig {
 pub struct Config {
     pub chain: ChainConfig,
     pub contract_address: H160,
+    pub token_address: H160,
 }
 
 impl Config {

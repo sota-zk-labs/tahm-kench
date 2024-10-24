@@ -7,10 +7,11 @@ use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Bytes;
 use home::home_dir;
 
-use crate::auction::{create_bid, create_new_auction, get_auction, get_total_auction, list_bid};
+use crate::auction_service::{create_bid, create_new_auction, get_auction, get_total_auction};
 
-mod auction;
+mod auction_service;
 mod config;
+mod entity;
 
 #[derive(Parser, Debug)]
 #[command(name = "tahken")]
@@ -45,13 +46,13 @@ enum Commands {
         #[arg(short, long, default_value = "1")]
         time: u64,
     },
-    /// Get list auctions opening
-    ListAuctions,
     /// Get detail auctions
     GetAuction {
         #[arg(short, long)]
         auction_id: U256,
     },
+    /// Get list auctions opening
+    ListAuctions,
     /// Bid item
     Bid {
         #[arg(short, long)]
@@ -59,17 +60,17 @@ enum Commands {
         #[arg(short, long)]
         auction_id: U256,
     },
-    /// Get list bid
-    ListBids {
-        #[arg(short, long)]
-        auction_id: U256,
-    },
-    /// Submit
-    Submit {
+    /// Reveal winner
+    RevealWinner {
         #[arg(short, long)]
         id: i32,
         #[arg(short, long)]
         private_key: Bytes,
+    },
+    /// Withdraw deposit token
+    Withdraw {
+        #[arg(short, long)]
+        auction_id: U256,
     },
 }
 
@@ -134,7 +135,7 @@ async fn main() -> Result<()> {
                 let duration = U256::from(time * 3600);
                 let _ = create_new_auction(
                     signer,
-                    &config.contract_address,
+                    config.contract_address,
                     public_key_bytes,
                     name,
                     description,
@@ -147,30 +148,30 @@ async fn main() -> Result<()> {
                 .context("Failed to create auction");
                 Ok(())
             }
-            Commands::ListAuctions => {
-                let _ = get_total_auction(signer, &config.contract_address)
-                    .await
-                    .context("Failed to get total auction");
-                Ok(())
-            }
             Commands::GetAuction { auction_id } => {
-                let _ = get_auction(signer, &config.contract_address, auction_id)
+                let _ = get_auction(signer, config.contract_address, auction_id)
                     .await
                     .context(format!("Failed to get auction with id: {}", auction_id));
                 Ok(())
             }
+            Commands::ListAuctions => {
+                let _ = get_total_auction(signer, config.contract_address)
+                    .await
+                    .context("Failed to get total auction");
+                Ok(())
+            }
             Commands::Bid { price, auction_id } => {
-                let _ = create_bid(signer, &config.contract_address, auction_id, price)
+                let _ = create_bid(signer, config.contract_address, config.token_address, auction_id, price)
                     .await
                     .context(format!("Failed to bid auction with id: {}", auction_id));
                 Ok(())
             }
-            Commands::ListBids { auction_id } => {
-                let _ = list_bid(auction_id);
+            Commands::RevealWinner { id, private_key } => {
+                println!("submit with: (id: {}, private_key: {})", id, private_key);
                 Ok(())
             }
-            Commands::Submit { id, private_key } => {
-                println!("submit with: (id: {}, private_key: {})", id, private_key);
+            Commands::Withdraw { auction_id } => {
+                println!("withdraw");
                 Ok(())
             }
         },

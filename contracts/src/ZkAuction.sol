@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -14,7 +14,7 @@ contract ZkAuction {
         Item item; // The item to be auction
         Bid[] bids; // Array of bids placed on the auction
         Winner winner; // Winner of the auction
-        uint256 depositPrice; // Deposit price when bider start bid
+        uint256 depositPrice; // Deposit price when bidder start bid
         mapping(address => bool) hasDeposited; // To track if a bidder has deposited
         uint256 endTime; // Time when the bid phase end
         bool ended; // Status of the auction

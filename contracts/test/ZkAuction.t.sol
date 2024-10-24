@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import {Test, console} from "forge-std/Test.sol";
 import {ZkAuction} from "../src/ZkAuction.sol";
-import {MockToken} from "../src/MockToken.sol";
-import {MockNFT} from "../src/MockNFT.sol";
+import {MockToken} from "../src/Mock/MockToken.sol";
+import {MockNFT} from "../src/Mock/MockNFT.sol";
 
 contract testZkAuction is Test {
     ZkAuction public zk_auction;
