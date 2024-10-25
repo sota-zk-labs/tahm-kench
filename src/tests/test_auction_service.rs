@@ -3,19 +3,17 @@
 // use ethers::signers::{LocalWallet, Signer};
 // use ethers::types::Bytes;
 // use home::home_dir;
-// use crate::config::Config;
-// use crate::entity::auction::{AssetEntity, AuctionEntity, BidEntity, Winner};
 //
+// use crate::config::Config;
+// use crate::entities::auction::{AssetEntity, AuctionEntity, BidEntity, WinnerEntity};
 //
 // #[tokio::test]
 // async fn test_auction_service() {
 //     let config_path = "config.toml".to_string();
 //     let keystore_path = ".zk_auction/keystores/wallet_zk_auction".to_string();
 //
-//     let config = Config::new(&config_path).expect(&format!(
-//         "Failed to load config from {:?}",
-//         &config_path
-//     ));
+//     let config =
+//         Config::new(&config_path).expect(&format!("Failed to load config from {:?}", &config_path));
 //
 //     let rpc_url = &config.chain.rpc_url;
 //     let provider =
@@ -41,7 +39,7 @@
 //     let signer = SignerMiddleware::new(provider.clone(), wallet.clone());
 //
 //     // Mock data
-//     let mock_auction = AuctionEntity{
+//     let mock_auction = AuctionEntity {
 //         owner: wallet.address(),
 //         owner_public_key: public_key_bytes,
 //         asset: AssetEntity {
@@ -50,13 +48,12 @@
 //             nft_contract_address: Default::default(),
 //             token_id: U256(1),
 //         },
-//         winner: Winner {
+//         winner: WinnerEntity {
 //             winner_address: winner_.winner,
 //             price: winner_.price,
 //         },
-//         deposit_price: deposit_price_,
-//         end_time: end_time_,
-//         ended: ended_,
-//     }
-//
+//         deposit_price: 1,
+//         end_time: 3600,
+//         ended: false,
+//     };
 // }

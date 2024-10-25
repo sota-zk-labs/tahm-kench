@@ -4,7 +4,7 @@ use ethers::prelude::*;
 use ethers::prelude::{Http, LocalWallet, Provider};
 use ethers::types::{Address, Bytes, U256};
 
-use crate::entity::auction::{AssetEntity, AuctionEntity, BidEntity, WinnerEntity};
+use crate::entities::auction::{AssetEntity, AuctionEntity, BidEntity, WinnerEntity};
 
 abigen!(erc721Contract, "./assets/erc721.json");
 abigen!(erc20Contract, "./assets/erc20.json");

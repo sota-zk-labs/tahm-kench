@@ -6,10 +6,10 @@ use ethers::providers::{Http, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Bytes;
 use home::home_dir;
-use tahm_kench_cli::auction_service::{
+use tahm_kench_cli::config::Config;
+use tahm_kench_cli::controllers::auction::{
     create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
 };
-use tahm_kench_cli::config::Config;
 
 #[derive(Parser, Debug)]
 #[command(name = "tahken")]
