@@ -4,7 +4,7 @@ pub struct AuctionEntity {
     pub owner: Address,          // Owner of the auction
     pub owner_public_key: Bytes, // Owner's public key
     pub asset: AssetEntity,      // Asset being auctioned
-    pub winner: Winner,          // Winner of the auction
+    pub winner: WinnerEntity,          // Winner of the auction
     pub deposit_price: U256,     // Deposit price when bidder start bid
     pub end_time: U256,          // Time when the bid phase end
     pub ended: bool,             // Status of the auction
@@ -24,7 +24,7 @@ pub struct AssetEntity {
 }
 
 #[derive(Debug, Clone)]
-pub struct Winner {
+pub struct WinnerEntity {
     pub winner_address: Address, // Address of the winner
     pub price: U256,             // Price submitted of winner
 }

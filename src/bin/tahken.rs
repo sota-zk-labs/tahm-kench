@@ -77,10 +77,7 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
 
     if args.version {
-        println!(
-            "{:?}",
-            std::env::var("CARGO_PKG_VERSION").unwrap_or_default()
-        );
+        println!(env!("APP_VERSION"));
         return Ok(());
     }
 
@@ -116,10 +113,7 @@ async fn main() -> Result<()> {
     match args.command {
         Some(command) => match command {
             Commands::Version => {
-                println!(
-                    "{:?}",
-                    std::env::var("CARGO_PKG_VERSION").unwrap_or_default()
-                );
+                println!(env!("APP_VERSION"));
                 Ok(())
             }
             Commands::CreateAuction {

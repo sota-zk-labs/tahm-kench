@@ -4,7 +4,7 @@ use ethers::prelude::*;
 use ethers::prelude::{Http, LocalWallet, Provider};
 use ethers::types::{Address, Bytes, U256};
 
-use crate::entity::auction::{AssetEntity, AuctionEntity, BidEntity, Winner};
+use crate::entity::auction::{AssetEntity, AuctionEntity, BidEntity, WinnerEntity};
 
 abigen!(erc721Contract, "./assets/erc721.json");
 abigen!(erc20Contract, "./assets/erc20.json");
@@ -66,7 +66,7 @@ pub async fn get_auction(
             nft_contract_address: asset_.nft_contract,
             token_id: asset_.token_id,
         },
-        winner: Winner {
+        winner: WinnerEntity {
             winner_address: winner_.winner,
             price: winner_.price,
         },

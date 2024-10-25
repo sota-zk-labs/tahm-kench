@@ -3,8 +3,8 @@ SHELL := /bin/bash
 CONFIG_PATH=config.toml
 
 start-cli:
-	@cargo install --path .
-	@tahm-kench-cli \
+	@cargo install --bin tahken --path .
+	@tahken \
 		--config-path $(CONFIG_PATH) \
 		--keystore-path $(KEYSTORE_PATH)
 	@rm -rf ~/.zk_auction/keystores/wallet_zk_auction
