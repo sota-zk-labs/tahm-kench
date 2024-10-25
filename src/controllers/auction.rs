@@ -161,6 +161,9 @@ pub async fn reveal_winner(
     auction_contract_address: Address,
     auction_id: U256,
     wallet: Wallet<SigningKey>,
+    rpc_url: &str,
+    network: Network,
+    batcher_url: &str
 ) -> Result<()> {
     // Get list bids
     let bidders = get_list_bids(signer.clone(), auction_contract_address, auction_id)
@@ -178,6 +181,9 @@ pub async fn reveal_winner(
             bidders,
             id: auc_id.to_vec(),
         },
+        rpc_url,
+        network,
+        batcher_url
     )
     .await?;
 
@@ -227,10 +233,10 @@ pub async fn withdraw(
 pub async fn get_winner_and_submit_proof(
     wallet: Wallet<SigningKey>,
     auction_data: &AuctionData,
+    rpc_url: &str,
+    network: Network,
+    batcher_url: &str
 ) -> Result<(Address, u128, Vec<u8>)> {
-    let rpc_url = "https://ethereum-holesky-rpc.publicnode.com";
-    let network = Network::Holesky;
-    let batcher_url = "wss://batcher.alignedlayer.com";
 
     let mut stdin = SP1Stdin::new();
     stdin.write(auction_data);
@@ -349,7 +355,7 @@ pub fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
 mod tests {
     use std::str::FromStr;
     use std::{env, fs};
-
+    use aligned_sdk::core::types::Network;
     use aligned_sp1_prover::{AuctionData, Bidder};
     use ecies::PublicKey;
     use ethers::prelude::Signer;
@@ -360,6 +366,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_submit_proof() {
+        let rpc_url = "https://ethereum-holesky-rpc.publicnode.com";
+        let network = Network::Holesky;
+        let batcher_url = "wss://batcher.alignedlayer.com";
         let wallet = LocalWallet::from_str(&env::var("PRIVATE_KEY").unwrap())
             .unwrap()
             .with_chain_id(17000u64);
@@ -385,7 +394,7 @@ mod tests {
         };
 
         let (_winner_addr, winner_amount, verified_proof) =
-            super::get_winner_and_submit_proof(wallet, &data)
+            super::get_winner_and_submit_proof(wallet, &data, rpc_url, network, batcher_url)
                 .await
                 .unwrap();
         dbg!(winner_amount);

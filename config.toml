@@ -3,3 +3,5 @@ token_address = "0x0fC5025C764cE34df352757e82f7B5c4Df39A836"
 [chain]
 etherscan_api_key = "2G4MBDIY1RNFHVZS27HR1KKVBHCX8YJ7WE"
 rpc_url = "https://ethereum-holesky-rpc.publicnode.com"
+network = "holesky"
+aligned_batcher_url = "wss://batcher.alignedlayer.com"

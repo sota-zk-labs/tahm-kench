@@ -1,3 +1,6 @@
+use std::str::FromStr;
+
+use aligned_sdk::core::types::Network;
 use anyhow::{Context, Result};
 use clap::CommandFactory;
 use clap::{Parser, Subcommand};
@@ -6,8 +9,8 @@ use ethers::providers::{Http, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Bytes;
 use home::home_dir;
-use tahm_kench_cli::config::Config;
-use tahm_kench_cli::controllers::auction::{
+use zk_auction::config::Config;
+use zk_auction::controllers::auction::{
     create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
 };
 
@@ -62,8 +65,6 @@ enum Commands {
     RevealWinner {
         #[arg(short, long)]
         auction_id: U256,
-        #[arg(short, long)]
-        private_key: Bytes,
     },
     /// Withdraw deposit token
     Withdraw {
@@ -81,14 +82,14 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    let config = Config::new(&args.config_path).expect(&format!(
-        "Failed to load config from {:?}",
-        &args.config_path
-    ));
+    let config = Config::new(&args.config_path)
+        .unwrap_or_else(|_| panic!("Failed to load config from {:?}", &args.config_path));
 
-    let rpc_url = &config.chain.rpc_url;
-    let provider =
-        Provider::<Http>::try_from(rpc_url.as_str()).expect("Failed to connect to provider");
+    let rpc_url = config.chain.rpc_url.as_str();
+    let network = Network::from_str(&config.chain.network).unwrap();
+    let aligned_batcher_url = config.chain.aligned_batcher_url.as_str();
+
+    let provider = Provider::<Http>::try_from(rpc_url).expect("Failed to connect to provider");
     let chain_id = provider
         .get_chainid()
         .await
@@ -164,16 +165,21 @@ async fn main() -> Result<()> {
                 .context(format!("Failed to bid auction with id: {}", auction_id));
                 Ok(())
             }
-            Commands::RevealWinner {
-                auction_id,
-                private_key,
-            } => {
-                let _ = reveal_winner(signer, config.contract_address, auction_id, wallet)
-                    .await
-                    .context(format!(
-                        "Failed to reveal winner of auction with id: {}",
-                        auction_id
-                    ));
+            Commands::RevealWinner { auction_id } => {
+                let _ = reveal_winner(
+                    signer,
+                    config.contract_address,
+                    auction_id,
+                    wallet,
+                    rpc_url,
+                    network,
+                    aligned_batcher_url,
+                )
+                .await
+                .context(format!(
+                    "Failed to reveal winner of auction with id: {}",
+                    auction_id
+                ));
                 Ok(())
             }
             Commands::Withdraw { auction_id } => {
