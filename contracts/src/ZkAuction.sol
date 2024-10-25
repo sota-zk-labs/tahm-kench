@@ -12,7 +12,7 @@ contract ZkAuction is IERC721Receiver {
     IERC20 public immutable lockToken; // The token to be locked
 
     // data for verifying batch inclusion
-    bytes32 public constant ELF_COMMITMENT = 0xe2a6abcfe3391a99ab84db41d4d1f5aead0ad92930932f20ff57c5d9a2fcc203;
+    bytes32 public constant ELF_COMMITMENT = 0x6ed09e347f28d513b9795151fc53f27d9ad582828b553969e9a2e3a3b3fe4bc3;
     error InvalidElf(bytes32 submittedElf);
     address public constant ALIGNED_SERVICE_MANAGER = 0x58F280BeBE9B34c9939C3C39e0890C81f163B623;
     address public constant ALIGNED_PAYMENT_SERVICE_ADDR = 0x815aeCA64a974297942D2Bbf034ABEe22a38A003;
