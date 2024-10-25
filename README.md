@@ -10,7 +10,7 @@
 **Plonky3** toolkit. The project aims to facilitate secure and private auctions by leveraging **zero-knowledge proofs (ZKPs)** to
 determine the highest bidder without revealing individual bid amounts. This ensures both privacy and fairness in the bidding process.
 
-Additionally, **SilentBid** serves as a **reference model** for developers interested in building decentralized applications (dApps)
+Additionally, **Tahm-Kench** serves as a **reference model** for developers interested in building decentralized applications (dApps)
 using **Plonky3** and **ZKPs**.
 
 ## Requirements

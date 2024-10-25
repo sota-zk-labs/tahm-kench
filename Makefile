@@ -7,9 +7,9 @@ start-cli:
 	@tahken \
 		--config-path $(CONFIG_PATH) \
 		--keystore-path $(KEYSTORE_PATH)
-	@rm -rf ~/.zk_auction/keystores/wallet_zk_auction
-	@mkdir -p ~/.zk_auction/keystores
-	@cp $(KEYSTORE_PATH) ~/.zk_auction/keystores
+	@rm -rf ~/.tahken/keystores/wallet_tahken
+	@mkdir -p ~/.tahken/keystores
+	@cp $(KEYSTORE_PATH) ~/.tahken/keystores
 
 
 deploy-contract:

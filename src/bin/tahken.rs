@@ -22,7 +22,7 @@ struct Cli {
     #[clap(short, long, default_value = "config.toml")]
     config_path: String,
     /// Path of local wallet
-    #[clap(short, long, default_value = ".zk_auction/keystores/wallet_zk_auction")]
+    #[clap(short, long, default_value = ".tahken/keystores/wallet_tahken")]
     keystore_path: String,
 }
 #[derive(Subcommand, Clone, Debug, PartialEq)]
