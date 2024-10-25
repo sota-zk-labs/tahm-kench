@@ -23,4 +23,5 @@ pub fn main() {
 
     sp1_zkvm::io::commit(&calc_auction_hash(&auction_data));
     sp1_zkvm::io::commit(winner_addr);
+    sp1_zkvm::io::commit(&winner_amount);
 }

@@ -168,7 +168,7 @@ async fn main() -> Result<()> {
                 auction_id,
                 private_key,
             } => {
-                let _ = reveal_winner(signer, config.contract_address, auction_id, private_key)
+                let _ = reveal_winner(signer, config.contract_address, auction_id, wallet)
                     .await
                     .context(format!(
                         "Failed to reveal winner of auction with id: {}",

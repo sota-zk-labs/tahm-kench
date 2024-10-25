@@ -146,12 +146,12 @@ contract ZkAuction is IERC721Receiver {
      * @notice Reveals the winner after the auction ends.
      * @dev Uses a ZK-proof to reveal the highest valid bid.
      */
-    function finalizeAuction(uint256 auctionId, Winner memory _winner, bytes32 inputHash, bytes memory proof) public onlyOwner(auctionId) {
+    function finalizeAuction(uint256 auctionId, Winner memory _winner, bytes memory proof) public onlyOwner(auctionId) {
         Auction storage auction = auctions[auctionId];
         require(auction.owner == msg.sender, "You need owner of auction");
         require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet");
         require(!auction.ended, "Auction has ended");
-        require(_verifyProof(_winner, inputHash, proof), "User doesn't winner");
+        _verifyProof(_winner, auctionId, proof);
         require(_winner.price <= auction.depositPrice, "Winner has more bid price than deposit price");
         // Set winner and status auction
         auction.winner = _winner;
@@ -176,7 +176,8 @@ contract ZkAuction is IERC721Receiver {
         // Transfer tokens from this contract to the user
         lockToken.safeTransfer(msg.sender, auction.depositPrice);
     }
-    function verifyProof(
+
+    function _verifyProof(
         Winner memory winner,
         uint256 auctionId,
         bytes memory verifiedProofData
