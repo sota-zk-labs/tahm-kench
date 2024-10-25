@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract ZkAuction {
+contract ZkAuction is IERC721Receiver {
+    using SafeERC20 for IERC20;
+
     IERC20 public immutable lockToken; // The token to be locked
 
     // data for verifying batch inclusion
@@ -17,11 +21,9 @@ contract ZkAuction {
         address owner; // Owner of the auction
         bytes ownerPublicKey; // Owner's public key
         Asset asset; // Asset being auctioned
-        Item item; // The item to be auction
         Bid[] bids; // Array of bids placed on the auction
         Winner winner; // Winner of the auction
-        uint256 depositPrice; // Deposit price when bider start bid
-        mapping(address => bool) hasDeposited; // To track if a bidder has deposited
+        uint256 depositPrice; // Deposit price when bidder start bid
         uint256 endTime; // Time when the bid phase end
         bool ended; // Status of the auction
     }
@@ -34,10 +36,7 @@ contract ZkAuction {
     struct Asset {
         string name; // Name of the asset
         string description; // Description of the asset
-    }
-
-    struct Item {
-        IERC721 nftContract; // The nft to be auction
+        address nftContract; // The nft to be auction
         uint256 tokenId; // Id nft
     }
 
@@ -46,26 +45,30 @@ contract ZkAuction {
         uint256 price; // Price submitted of winner
     }
 
+    uint256 public auctionCount; // Counter for auctions
+
     // Mapping to store auctions by their ID
     mapping(uint256 => Auction) public auctions;
-    uint256 public auctionCount; // Counter for auctions
+    // Mapping from owner address to their list of auctions
+    mapping(address => Auction[]) public auctionsByOwner;
+    // Mapping to track deposits for each auction
+    mapping(uint256 => mapping(address => bool)) public hasDeposited;
 
     // Events
     event AuctionCreated(uint256 indexed auctionId, address indexed owner);
-    event NewBid(
-        uint256 indexed auctionId,
-        address indexed bidder,
-        bytes encryptedPrice
-    );
-    event AuctionEnded(
-        uint256 indexed auctionId,
-        address indexed winner,
-        uint256 price
-    );
+    event NewBid(uint256 indexed auctionId, address indexed bidder, bytes encryptedPrice);
+    event AuctionEnded(uint256 indexed auctionId, address indexed winner, uint256 price);
 
     constructor(address _lockToken) {
         lockToken = IERC20(_lockToken);
     }
+
+    modifier onlyOwner(uint256 auctionId) {
+        Auction storage auction = auctions[auctionId];
+        require(msg.sender == auction.owner, "You are not the owner");
+        _;
+    }
+
 
     // Function to create a new auction
     /**
@@ -85,14 +88,8 @@ contract ZkAuction {
         require(_duration > 0, "Duration must be greater than zero");
 
         IERC721 nftContract = IERC721(_nftContract);
-        require(
-            nftContract.ownerOf(_tokenId) == msg.sender,
-            "You must own the NFT to auction it"
-        );
-        require(
-            nftContract.getApproved(_tokenId) == address(this),
-            "You need approve the NFT to contract"
-        );
+        require(nftContract.ownerOf(_tokenId) == msg.sender, "You must own the NFT to auction it");
+        require(nftContract.getApproved(_tokenId) == address(this), "You need approve the NFT to contract");
 
         // Create auction
         auctionCount++;
@@ -100,43 +97,43 @@ contract ZkAuction {
 
         newAuction.owner = msg.sender;
         newAuction.ownerPublicKey = _ownerPublicKey;
-        newAuction.item = Item(nftContract, _tokenId);
-        newAuction.asset = Asset(_assetName, _assetDescription);
+        newAuction.asset = Asset(_assetName, _assetDescription, _nftContract, _tokenId);
         newAuction.depositPrice = _depositPrice;
         newAuction.endTime = block.timestamp + _duration; // Set auction end time
         newAuction.ended = false;
 
-        // Deposit item
-        nftContract.transferFrom(msg.sender, address(this), _tokenId); // Transfer NFT to contract
-        require(
-            nftContract.ownerOf(_tokenId) == address(this),
-            "Auction contract must own the NFT."
-        );
+        auctionCount++;
+        auctionsByOwner[msg.sender].push(newAuction);
+
+        // Deposit nft
+        nftContract.safeTransferFrom(msg.sender, address(this), _tokenId); // Transfer NFT to contract
         emit AuctionCreated(auctionCount, msg.sender);
+    }
+
+    // Get auctions for an owner
+    function getAuctionsByOwner(address owner) public view returns (Auction[] memory) {
+        return auctionsByOwner[owner];
     }
 
     /**
      * @notice Allows users to place bids.
      * @dev Bids are encrypted for ZK-based auctions.
      */
-    function new_bid(uint256 auctionId, bytes memory _encryptedPrice) public {
+    function placeBid(uint256 auctionId, bytes memory _encryptedPrice) public {
         Auction storage auction = auctions[auctionId];
         require(!auction.ended, "Auction has ended");
         require(block.timestamp < auction.endTime, "Auction has expired");
         require(!auction.hasDeposited[msg.sender], "Already deposited");
         require(
-            lockToken.allowance(msg.sender, address(this)) ==
-            auction.depositPrice,
+            lockToken.allowance(msg.sender, address(this)) == auction.depositPrice,
             "You need approve token deposit to contract"
         );
         // Update the state to indicate that the user has deposited
-        auction.hasDeposited[msg.sender] = true;
+        hasDeposited[auctionId][msg.sender] = true;
         // Bid
-        auction.bids.push(
-            Bid({bidder: msg.sender, encryptedPrice: _encryptedPrice})
-        );
+        auction.bids.push(Bid({bidder: msg.sender, encryptedPrice: _encryptedPrice}));
 
-        lockToken.transferFrom(msg.sender, address(this), auction.depositPrice);
+        lockToken.safeTransferFrom(msg.sender, address(this), auction.depositPrice);
         emit NewBid(auctionId, msg.sender, _encryptedPrice);
     }
 
@@ -144,115 +141,46 @@ contract ZkAuction {
      * @notice Gets list bidders after the bid phase end
      * @dev Uses auctionId to get list bidders.
      */
-    function getBids(uint256 auctionId) view public returns (Bid[] memory) {
-        require(
-            block.timestamp >= auctions[auctionId].endTime,
-            "Auction has not ended yet"
-        );
+    function getBids(uint256 auctionId) public view returns (Bid[] memory) {
+        require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet");
         require(!auctions[auctionId].ended, "Auction has ended");
         return auctions[auctionId].bids;
-    }
-
-
-    function withdraw(uint256 auctionId) public {
-        Auction storage auction = auctions[auctionId];
-
-        /**
-         * @notice Reveals the winner after the auction ends.
-     *
-     * This function reveals the highest valid bid by a ZK-proof and transfers ownership of the NFT to the winning bidder.
-     *
-     * Parameters:
-     *     _auctionId (uint256): The ID of the auction being ended
-     *     winner (Winner memory): Information about the winner, including their address and price submitted in encrypted form
-     *     inputHash (bytes32): A hash used for verification purposes only
-     *     verifiedProofData (bytes) - bytes: Data provided by a ZK-proving system to verify that this bid was made during the auction phase.
-     *
-     * Requirements:
-     * 1. The current block timestamp must be greater than or equal to the end time of the auction (_endTime).
-     * 2. The `ended` status flag for the associated Auction contract instance is set to false, indicating it has not ended yet
-     * 3. A verification data hash and a proof are submitted in _verifiedProofData that matches the batch inclusion information with ELF COMMITMENT.
-     *
-     * Effects:
-     *   - Set winner of auction
-     *   - Transfer NFT from this smart contract address back into possession of winning bidder's address
-     *   - Send difference between total deposit price for entire bid period and actual highest valid encryptedPrice to user in token form, if any exists (otherwise zero is sent).
-     *
-     */
-        /**
-         * @notice Reveals the winner after the auction ends.
-     *
-     * This function reveals the highest valid bid by a ZK-proof and transfers ownership of the NFT to the winning bidder.
-     *
-     * Parameters:
-     *     _auctionId (uint256): The ID of the auction being ended
-     *     winner (Winner memory): Information about the winner, including their address and price submitted in encrypted form
-     *     inputHash (bytes32): A hash used for verification purposes only
-     *     verifiedProofData (bytes) - bytes: Data provided by a ZK-proving system to verify that this bid was made during the auction phase.
-     *
-     * Requirements:
-     * 1. The current block timestamp must be greater than or equal to the end time of the auction (_endTime).
-     * 2. The `ended` status flag for the associated Auction contract instance is set to false, indicating it has not ended yet
-     * 3. A verification data hash and a proof are submitted in _verifiedProofData that matches the batch inclusion information with ELF COMMITMENT.
-     *
-     * Effects:
-     *   - Set winner of auction
-     *   - Transfer NFT from this smart contract address back into possession of winning bidder's address
-     *   - Send difference between total deposit price for entire bid period and actual highest valid encryptedPrice to user in token form, if any exists (otherwise zero is sent).
-     *
-     */     require(auction.hasDeposited[msg.sender], "No tokens to withdraw");
-        require(auction.ended, "Tokens are still locked");
-        // Transfer tokens from this contract to the user
-        lockToken.transfer(msg.sender, auction.depositPrice);
     }
 
     /**
      * @notice Reveals the winner after the auction ends.
      * @dev Uses a ZK-proof to reveal the highest valid bid.
      */
-    function revealWinner(
-        uint256 auctionId,
-        Winner memory winner,
-        bytes memory verifiedProofData
-    ) public {
-        require(
-            block.timestamp >= auctions[auctionId].endTime,
-            "Auction has not ended yet"
-        );
-        require(!auctions[auctionId].ended, "Auction has ended");
-        verifyProof(winner, auctionId, verifiedProofData);
-        // Set winner
+    function finalizeAuction(uint256 auctionId, Winner memory _winner, bytes32 inputHash, bytes memory proof) public onlyOwner(auctionId) {
         Auction storage auction = auctions[auctionId];
-        require(
-            winner.price <= auction.depositPrice,
-            "Winner has more bid price than deposit price"
-        );
-        auction.winner = winner;
-        // Send item
-        auction.item.nftContract.transferFrom(
-            address(this),
-            auction.winner.winner,
-            auction.item.tokenId
-        );
+        require(auction.owner == msg.sender, "You need owner of auction");
+        require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet");
+        require(!auction.ended, "Auction has ended");
+        require(_verifyProof(_winner, inputHash, proof), "User doesn't winner");
+        require(_winner.price <= auction.depositPrice, "Winner has more bid price than deposit price");
+        // Set winner and status auction
+        auction.winner = _winner;
+        auction.ended = true;
+        // Send nft
+        IERC721 nftContract = IERC721(auction.asset.nftContract);
+        nftContract.safeTransferFrom(address(this), auction.winner.winner, auction.asset.tokenId);
         // Refund token
         if (auction.depositPrice > auction.winner.price) {
-            lockToken.transfer(
-                auction.winner.winner,
-                auction.depositPrice - auction.winner.price
-            );
+            lockToken.safeTransfer(auction.winner.winner, auction.depositPrice - auction.winner.price);
         }
         // Withdraw token
-        lockToken.transfer(msg.sender, auction.winner.price);
-        // Set status auction
-        auction.ended = true;
+        lockToken.safeTransfer(msg.sender, auction.winner.price);
 
-        emit AuctionEnded(
-            auctionId,
-            auction.winner.winner,
-            auction.winner.price
-        );
+        emit AuctionEnded(auctionId, auction.winner.winner, auction.winner.price);
     }
 
+    function withdraw(uint256 auctionId) public {
+        Auction storage auction = auctions[auctionId];
+        require(hasDeposited[auctionId][msg.sender], "No tokens to withdraw");
+        require(auction.ended, "Tokens are still locked");
+        // Transfer tokens from this contract to the user
+        lockToken.safeTransfer(msg.sender, auction.depositPrice);
+    }
     function verifyProof(
         Winner memory winner,
         uint256 auctionId,
@@ -318,5 +246,14 @@ contract ZkAuction {
             hashInput = abi.encodePacked(hashInput, bids[i].bidder, bids[i].encryptedPrice);
         }
         return keccak256(hashInput);
+    }
+
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external pure override returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 }

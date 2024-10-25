@@ -6,11 +6,10 @@ use ethers::providers::{Http, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Bytes;
 use home::home_dir;
-
-use crate::auction::{create_bid, create_new_auction, get_auction, get_total_auction, list_bid};
-
-mod auction;
-mod config;
+use tahm_kench_cli::config::Config;
+use tahm_kench_cli::controllers::auction::{
+    create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
+};
 
 #[derive(Parser, Debug)]
 #[command(name = "tahken")]
@@ -45,13 +44,13 @@ enum Commands {
         #[arg(short, long, default_value = "1")]
         time: u64,
     },
-    /// Get list auctions opening
-    ListAuctions,
     /// Get detail auctions
     GetAuction {
         #[arg(short, long)]
         auction_id: U256,
     },
+    /// Get total auctions
+    ListAuctions,
     /// Bid item
     Bid {
         #[arg(short, long)]
@@ -59,17 +58,17 @@ enum Commands {
         #[arg(short, long)]
         auction_id: U256,
     },
-    /// Get list bid
-    ListBids {
+    /// Reveal winner
+    RevealWinner {
         #[arg(short, long)]
         auction_id: U256,
-    },
-    /// Submit
-    Submit {
-        #[arg(short, long)]
-        id: i32,
         #[arg(short, long)]
         private_key: Bytes,
+    },
+    /// Withdraw deposit token
+    Withdraw {
+        #[arg(short, long)]
+        auction_id: U256,
     },
 }
 
@@ -78,14 +77,11 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
 
     if args.version {
-        println!(
-            "{:?}",
-            std::env::var("CARGO_PKG_VERSION").unwrap_or_default()
-        );
+        println!(env!("APP_VERSION"));
         return Ok(());
     }
 
-    let config = config::Config::new(&args.config_path).expect(&format!(
+    let config = Config::new(&args.config_path).expect(&format!(
         "Failed to load config from {:?}",
         &args.config_path
     ));
@@ -117,10 +113,7 @@ async fn main() -> Result<()> {
     match args.command {
         Some(command) => match command {
             Commands::Version => {
-                println!(
-                    "{:?}",
-                    std::env::var("CARGO_PKG_VERSION").unwrap_or_default()
-                );
+                println!(env!("APP_VERSION"));
                 Ok(())
             }
             Commands::CreateAuction {
@@ -134,7 +127,7 @@ async fn main() -> Result<()> {
                 let duration = U256::from(time * 3600);
                 let _ = create_new_auction(
                     signer,
-                    &config.contract_address,
+                    config.contract_address,
                     public_key_bytes,
                     name,
                     description,
@@ -147,30 +140,49 @@ async fn main() -> Result<()> {
                 .context("Failed to create auction");
                 Ok(())
             }
-            Commands::ListAuctions => {
-                let _ = get_total_auction(signer, &config.contract_address)
-                    .await
-                    .context("Failed to get total auction");
-                Ok(())
-            }
             Commands::GetAuction { auction_id } => {
-                let _ = get_auction(signer, &config.contract_address, auction_id)
+                let _ = get_auction(signer, config.contract_address, auction_id)
                     .await
                     .context(format!("Failed to get auction with id: {}", auction_id));
                 Ok(())
             }
-            Commands::Bid { price, auction_id } => {
-                let _ = create_bid(signer, &config.contract_address, auction_id, price)
+            Commands::ListAuctions => {
+                let _ = get_total_auction(signer, config.contract_address)
                     .await
-                    .context(format!("Failed to bid auction with id: {}", auction_id));
+                    .context("Failed to get total auction");
                 Ok(())
             }
-            Commands::ListBids { auction_id } => {
-                let _ = list_bid(auction_id);
+            Commands::Bid { price, auction_id } => {
+                let _ = create_bid(
+                    signer,
+                    config.contract_address,
+                    config.token_address,
+                    auction_id,
+                    price,
+                )
+                .await
+                .context(format!("Failed to bid auction with id: {}", auction_id));
                 Ok(())
             }
-            Commands::Submit { id, private_key } => {
-                println!("submit with: (id: {}, private_key: {})", id, private_key);
+            Commands::RevealWinner {
+                auction_id,
+                private_key,
+            } => {
+                let _ = reveal_winner(signer, config.contract_address, auction_id, private_key)
+                    .await
+                    .context(format!(
+                        "Failed to reveal winner of auction with id: {}",
+                        auction_id
+                    ));
+                Ok(())
+            }
+            Commands::Withdraw { auction_id } => {
+                let _ = withdraw(signer, config.contract_address, auction_id)
+                    .await
+                    .context(format!(
+                        "Failed to withdraw from auction with id: {}",
+                        auction_id
+                    ));
                 Ok(())
             }
         },
