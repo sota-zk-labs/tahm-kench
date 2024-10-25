@@ -18,3 +18,9 @@ deploy-contract:
 test-submit-proof:
 	RUST_BACKTRACE=1 cargo test --release --color=always --lib tests::test_submit_proof --no-fail-fast --manifest-path /home/ubuntu/code/zkp/tahm-kench/prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture
 
+deposit-to-aligned:
+	aligned deposit-to-batcher \
+    --rpc_url https://ethereum-holesky-rpc.publicnode.com \
+    --network holesky \
+    --keystore_path $(KEYSTORE_PATH) \
+    --amount 0.004ether
