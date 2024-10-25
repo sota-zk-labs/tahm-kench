@@ -1,9 +1,10 @@
 use ecies::SecretKey;
 use serde::{Deserialize, Serialize};
+use tiny_keccak::{Hasher, Keccak};
 
 pub const PVK_HEX: &str = include_str!("../pvk");
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct AuctionData {
     pub bidders: Vec<Bidder>,
     pub id: Vec<u8>,
@@ -16,28 +17,49 @@ pub struct Bidder {
 }
 
 pub fn decrypt_bidder_data(pvk: &SecretKey, bidder: &Bidder) -> u128 {
-    let data = String::from_utf8(
+    u128::from_be_bytes(
         ecies::decrypt(&pvk.serialize(), &bidder.encrypted_amount)
-            .expect("failed to decrypt"),
+            .expect("failed to decrypt")
+            .try_into()
+            .unwrap(),
     )
-        .unwrap();
-    data.parse().unwrap()
+}
+
+pub fn calc_auction_hash(auction_data: &AuctionData) -> [u8; 32] {
+    let mut input = vec![];
+    let mut hasher = Keccak::v256();
+
+    input.extend(&auction_data.id);
+    for bidder in &auction_data.bidders {
+        input.extend(&bidder.address);
+        input.extend(&bidder.encrypted_amount);
+        println!("{:?}", bidder.encrypted_amount);
+
+    }
+
+    let mut output = [0u8; 32];
+    hasher.update(&input);
+    hasher.finalize(&mut output);
+    output
 }
 
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use crate::{AuctionData, Bidder, PVK_HEX};
-    // use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding};
-    // use rsa::rand_core::OsRng;
-    // use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
-    use sp1_sdk::{ProverClient, SP1Stdin};
     // use std::env;
     use std::fs::File;
     use std::io::Read;
     use std::process::Command;
+
     use ecies::{PublicKey, SecretKey};
-    use rand::rngs::{OsRng};
+    use hex::ToHex;
+    use rand::rngs::OsRng;
+    // use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding};
+    // use rsa::rand_core::OsRng;
+    // use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
+    use sp1_sdk::{ProverClient, SP1Stdin};
+
+    use crate::{calc_auction_hash, AuctionData, Bidder, PVK_HEX};
     // use ecies_ed25519::generate_keypair;
     // use rand::{CryptoRng, RngCore};
 
@@ -62,19 +84,7 @@ mod tests {
         let (_, pbk) = get_key();
 
         let mut stdin = SP1Stdin::new();
-        stdin.write(&AuctionData {
-            bidders: vec![
-                Bidder {
-                    encrypted_amount: encrypt_bidder_amount(&2, &pbk),
-                    address: vec![5; 32],
-                },
-                Bidder {
-                    encrypted_amount: encrypt_bidder_amount(&1, &pbk),
-                    address: vec![1; 32],
-                },
-            ],
-            id: vec![0; 32],
-        });
+        stdin.write(&auction_data(&pbk));
 
         let client = ProverClient::new();
         let (pk, vk) = client.setup(elf.as_slice());
@@ -121,13 +131,40 @@ mod tests {
         fs::write("pbk", pbk).expect("failed to write public key to file");
     }
 
+    #[test]
+    fn test_hash_auction() {
+        let (_, pbk) = get_key();
+        let data = auction_data(&pbk);
+        println!("{:?}",data);
+        // println!("{:?}", hex::encode(&data.bidders[0].address));
+        // println!("{:?}", hex::encode(&data.bidders[1].encrypted_amount));
+        println!("{:?}", hex::encode(calc_auction_hash(&data)));
+    }
+
     fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
-        let data = amount.to_string();
-        ecies::encrypt(&pbk.serialize(), data.as_bytes()).expect("failed to encrypt bidder data")
+        ecies::encrypt(&pbk.serialize(), &amount.to_be_bytes())
+            .expect("failed to encrypt bidder data")
     }
 
     fn get_key() -> (SecretKey, PublicKey) {
-        let pvk = SecretKey::parse_slice(&hex::decode(PVK_HEX).unwrap()).expect("fail to read private key");
+        let pvk = SecretKey::parse_slice(&hex::decode(PVK_HEX).unwrap())
+            .expect("fail to read private key");
         (pvk, PublicKey::from_secret_key(&pvk))
+    }
+
+    fn auction_data(pbk: &PublicKey) -> AuctionData {
+        AuctionData {
+            bidders: vec![
+                Bidder {
+                    encrypted_amount: encrypt_bidder_amount(&3, pbk),
+                    address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
+                },
+                Bidder {
+                    encrypted_amount: encrypt_bidder_amount(&2, pbk),
+                    address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
+                },
+            ],
+            id: vec![0; 32],
+        }
     }
 }
