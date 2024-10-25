@@ -86,7 +86,6 @@ contract ZkAuction is IERC721Receiver {
         require(nftContract.getApproved(_tokenId) == address(this), "You need approve the NFT to contract");
 
         // Create auction
-        auctionCount++;
         Auction storage newAuction = auctions[auctionCount];
 
         newAuction.owner = msg.sender;
@@ -117,11 +116,7 @@ contract ZkAuction is IERC721Receiver {
         Auction storage auction = auctions[auctionId];
         require(!auction.ended, "Auction has ended");
         require(block.timestamp < auction.endTime, "Auction has expired");
-        require(!auction.hasDeposited[msg.sender], "Already deposited");
-        require(
-            lockToken.allowance(msg.sender, address(this)) == auction.depositPrice,
-            "You need approve token deposit to contract"
-        );
+        require(!hasDeposited[auctionId][msg.sender], "Already deposited");
         // Update the state to indicate that the user has deposited
         hasDeposited[auctionId][msg.sender] = true;
         // Bid
