@@ -14,3 +14,7 @@ start-cli:
 
 deploy-contract:
 	@. ./contracts/deploy.sh
+
+test-submit-proof:
+	RUST_BACKTRACE=1 cargo test --release --color=always --lib tests::test_submit_proof --no-fail-fast --manifest-path /home/ubuntu/code/zkp/tahm-kench/prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture
+

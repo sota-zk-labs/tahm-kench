@@ -1,0 +1,16 @@
+[package]
+name = "prover-sdk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", rev = "v1.0.1" }
+aligned-sp1-prover = { workspace = true }
+bincode = { workspace = true }
+hex = { workspace = true }
+aligned-sdk = { workspace = true }
+ethers = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+ecies = { workspace = true }
+dialoguer = { workspace = true }
