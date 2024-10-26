@@ -7,8 +7,8 @@ use clap::{Parser, Subcommand};
 use ethers::prelude::*;
 use ethers::providers::{Http, Provider};
 use ethers::signers::{LocalWallet, Signer};
-use ethers::types::Bytes;
 use home::home_dir;
+use prover_sdk::get_encryption_key;
 use zk_auction::config::Config;
 use zk_auction::controllers::auction::{
     create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
@@ -104,11 +104,7 @@ async fn main() -> Result<()> {
         .expect("Failed to decrypt keystore")
         .with_chain_id(chain_id.as_u64());
 
-    let private_key = wallet.signer();
-    let public_key = private_key.verifying_key();
-    // Convert the public key to Bytes
-    let public_key_bytes = Bytes::from(public_key.to_encoded_point(false).as_ref().to_vec());
-
+    let encryption_key = get_encryption_key()?;
     let signer = SignerMiddleware::new(provider.clone(), wallet.clone());
 
     match args.command {
@@ -129,7 +125,7 @@ async fn main() -> Result<()> {
                 let _ = create_new_auction(
                     signer,
                     config.contract_address,
-                    public_key_bytes,
+                    &encryption_key,
                     name,
                     description,
                     nft_contract_address,
@@ -142,9 +138,11 @@ async fn main() -> Result<()> {
                 Ok(())
             }
             Commands::GetAuction { auction_id } => {
-                let _ = get_auction(signer, config.contract_address, auction_id)
+                let auction = get_auction(signer, config.contract_address, auction_id)
                     .await
-                    .context(format!("Failed to get auction with id: {}", auction_id));
+                    .unwrap();
+                    // .context(format!("Failed to get auction with id: {}", auction_id));
+                auction.print_info();
                 Ok(())
             }
             Commands::ListAuctions => {
@@ -193,7 +191,7 @@ async fn main() -> Result<()> {
             }
         },
         None => {
-            Cli::command().print_help().unwrap();
+            Cli::command().print_help()?;
             Ok(())
         }
     }

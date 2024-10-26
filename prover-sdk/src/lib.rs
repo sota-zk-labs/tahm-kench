@@ -12,7 +12,7 @@ use ecies::PublicKey;
 use ethers::prelude::Signer;
 
 pub const ELF: &[u8] = include_bytes!("../../sp1-prover/elf/riscv32im-succinct-zkvm-elf");
-pub const ENCRYPTION_PUBLIC_KEY: &str = include_str!("../../sp1-prover/pbk");
+pub const ENCRYPTION_PUBLIC_KEY: &str = include_str!("../../sp1-prover/encryption_key");
 
 /// Return winner and proof for the function `revealWinner` in the contract
 pub async fn get_winner_and_submit_proof(
@@ -139,6 +139,13 @@ pub async fn get_winner_and_submit_proof(
 
 pub fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
     ecies::encrypt(&pbk.serialize(), &amount.to_be_bytes()).expect("failed to encrypt bidder data")
+}
+
+pub fn get_encryption_key() -> Result<PublicKey> {
+    Ok(PublicKey::parse(
+        (*hex::decode(ENCRYPTION_PUBLIC_KEY).unwrap())
+            .try_into()?,
+    ).expect("parsing encryption public key failed"))
 }
 
 #[cfg(test)]

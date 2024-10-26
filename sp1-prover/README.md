@@ -1,7 +1,6 @@
 # Command
 ## Generate private key file
 ```bash
-touch pvk
 make gen-key
 ```
 

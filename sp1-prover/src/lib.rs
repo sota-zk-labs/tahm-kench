@@ -2,7 +2,7 @@ use ecies::SecretKey;
 use serde::{Deserialize, Serialize};
 use tiny_keccak::{Hasher, Keccak};
 
-pub const PVK_HEX: &str = include_str!("../pvk");
+pub const PVK_HEX: &str = include_str!("../private_encryption_key");
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct AuctionData {
@@ -127,8 +127,8 @@ mod tests {
         let pbk = hex::encode(pbk.serialize());
         println!("Private key: {}", &pvk);
         println!("Public key: {}", &pbk);
-        fs::write("pvk", pvk).expect("failed to write private key to file");
-        fs::write("pbk", pbk).expect("failed to write public key to file");
+        fs::write("../private_encryption_key", pvk).expect("failed to write private key to file");
+        fs::write("../encryption_key", pbk).expect("failed to write public key to file");
     }
 
     #[test]

@@ -22,5 +22,7 @@ Cargo.lock
 *.pem
 pvk
 pbk
+encryption_key
+private_encryption_key
 sp1-prover/elf
 contracts/.env

@@ -19,7 +19,7 @@ contract ZkAuction is IERC721Receiver {
 
     struct Auction {
         address owner; // Owner of the auction
-        bytes ownerPublicKey; // Owner's public key
+        bytes encryptionKey; // Owner's public key
         Asset asset; // Asset being auctioned
         Bid[] bids; // Array of bids placed on the auction
         Winner winner; // Winner of the auction
@@ -76,7 +76,7 @@ contract ZkAuction is IERC721Receiver {
      * @dev Initializes a new auction.
      */
     function createAuction(
-        bytes memory _ownerPublicKey,
+        bytes memory _encryptionKey,
         address _nftContract,
         uint256 _tokenId,
         string memory _assetName,
@@ -95,7 +95,7 @@ contract ZkAuction is IERC721Receiver {
         Auction storage newAuction = auctions[auctionCount];
 
         newAuction.owner = msg.sender;
-        newAuction.ownerPublicKey = _ownerPublicKey;
+        newAuction.encryptionKey = _encryptionKey;
         newAuction.asset = Asset(_assetName, _assetDescription, _nftContract, _tokenId);
         newAuction.depositPrice = _depositPrice;
         newAuction.endTime = block.timestamp + _duration; // Set auction end time
