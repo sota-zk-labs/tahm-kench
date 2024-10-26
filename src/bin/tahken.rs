@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use aligned_sdk::core::types::Network;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::CommandFactory;
 use clap::{Parser, Subcommand};
 use ethers::prelude::*;
@@ -42,7 +42,7 @@ enum Commands {
         token_id: U256,
         #[arg(short, long)]
         target_price: u128,
-        #[arg(short, long, default_value = "1")]
+        #[arg(short, long, default_value = "3600")]
         time: u64,
     },
     /// Get detail auctions
@@ -71,6 +71,7 @@ enum Commands {
     },
 }
 
+#[allow(clippy::needless_return)]
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
@@ -119,8 +120,7 @@ async fn main() -> Result<()> {
                 target_price,
                 time,
             } => {
-                let duration = U256::from(time * 3600);
-                let _ = create_new_auction(
+                create_new_auction(
                     signer,
                     config.contract_address,
                     &encryption_key,
@@ -129,30 +129,30 @@ async fn main() -> Result<()> {
                     nft_contract_address,
                     token_id,
                     target_price,
-                    duration,
+                    U256::from(time),
                 )
                 .await
-                .context("Failed to create auction");
+                .expect("Failed to create auction");
                 Ok(())
             }
             Commands::GetAuction { auction_id } => {
-                let _ = get_auction(signer, config.contract_address, auction_id)
+                get_auction(signer, config.contract_address, auction_id)
                     .await
-                    .context(format!("Failed to get auction with id: {}", auction_id));
+                    .unwrap_or_else(|_| panic!("Failed to get auction with id: {}", auction_id));
                 
                 Ok(())
             }
             Commands::ListAuctions => {
-                let _ = set_up(signer.clone(), config.token_address, config.contract_address, config.wallet_address_test)
+                set_up(signer.clone(), config.token_address, config.nft_address, config.wallet_address_test)
                     .await
-                    .context("Failed to set up contract");
-                let _ = get_total_auction(signer, config.contract_address)
+                    .expect("Failed to set up contract");
+                get_total_auction(signer, config.contract_address)
                     .await
-                    .context("Failed to get total auction");
+                    .expect("Failed to get total auction");
                 Ok(())
             }
             Commands::Bid { price, auction_id } => {
-                let _ = create_bid(
+                create_bid(
                     signer,
                     config.contract_address,
                     config.token_address,
@@ -160,11 +160,11 @@ async fn main() -> Result<()> {
                     price,
                 )
                 .await
-                .context(format!("Failed to bid auction with id: {}", auction_id));
+                .unwrap_or_else(|_| panic!("Failed to bid auction with id: {}", auction_id));
                 Ok(())
             }
             Commands::RevealWinner { auction_id } => {
-                let _ = reveal_winner(
+                reveal_winner(
                     signer,
                     config.contract_address,
                     auction_id,
@@ -174,19 +174,15 @@ async fn main() -> Result<()> {
                     aligned_batcher_url,
                 )
                 .await
-                .context(format!(
-                    "Failed to reveal winner of auction with id: {}",
-                    auction_id
-                ));
+                .unwrap_or_else(|_| panic!("Failed to reveal winner of auction with id: {}",
+                    auction_id));
                 Ok(())
             }
             Commands::Withdraw { auction_id } => {
-                let _ = withdraw(signer, config.contract_address, auction_id)
+                withdraw(signer, config.contract_address, auction_id)
                     .await
-                    .context(format!(
-                        "Failed to withdraw from auction with id: {}",
-                        auction_id
-                    ));
+                    .unwrap_or_else(|_| panic!("Failed to withdraw from auction with id: {}",
+                        auction_id));
                 Ok(())
             }
         },
