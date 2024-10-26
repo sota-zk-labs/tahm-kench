@@ -11,9 +11,10 @@ start-cli:
 	@mkdir -p ~/.tahken/keystores
 	@cp $(KEYSTORE_PATH) ~/.tahken/keystores/wallet_tahken
 
-
 deploy-contract:
-	@. ./contracts/deploy.sh
+	@chmod +x ./contracts/deploy.sh
+	@./contracts/deploy.sh
+	@cp contracts/out/ZkAuction.sol/ZkAuction.json assets/ZkAuction.json
 
 test-submit-proof:
 	RUST_BACKTRACE=1 cargo test --release --color=always --lib tests::test_submit_proof --no-fail-fast --manifest-path /home/ubuntu/code/zkp/tahm-kench/prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture

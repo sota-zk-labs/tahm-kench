@@ -10,9 +10,7 @@ use ethers::signers::{LocalWallet, Signer};
 use home::home_dir;
 use prover_sdk::get_encryption_key;
 use zk_auction::config::Config;
-use zk_auction::controllers::auction::{
-    create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
-};
+use zk_auction::controllers::auction::{create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, set_up, withdraw};
 
 #[derive(Parser, Debug)]
 #[command(name = "tahken")]
@@ -138,14 +136,16 @@ async fn main() -> Result<()> {
                 Ok(())
             }
             Commands::GetAuction { auction_id } => {
-                let auction = get_auction(signer, config.contract_address, auction_id)
+                let _ = get_auction(signer, config.contract_address, auction_id)
                     .await
-                    .unwrap();
-                    // .context(format!("Failed to get auction with id: {}", auction_id));
-                auction.print_info();
+                    .context(format!("Failed to get auction with id: {}", auction_id));
+                
                 Ok(())
             }
             Commands::ListAuctions => {
+                let _ = set_up(signer.clone(), config.token_address, config.contract_address, config.wallet_address_test)
+                    .await
+                    .context("Failed to set up contract");
                 let _ = get_total_auction(signer, config.contract_address)
                     .await
                     .context("Failed to get total auction");

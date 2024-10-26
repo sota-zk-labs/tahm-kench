@@ -10,9 +10,28 @@ use ethers::types::{Address, Bytes, U256};
 use prover_sdk::{encrypt_bidder_amount, get_winner_and_submit_proof};
 use crate::entities::auction::AuctionEntity;
 
-abigen!(erc721Contract, "./assets/erc721.json");
-abigen!(erc20Contract, "./assets/erc20.json");
+abigen!(nftContract, "./assets/erc721.json");
+abigen!(erc20Contracts, "./assets/erc20.json");
+
 abigen!(zkAuctionContract, "./assets/ZkAuction.json");
+
+pub async fn set_up(
+    signer: SignerMiddleware<Provider<Http>, LocalWallet>,
+    token_address: Address,
+    nft_address: Address,
+    wallet_address: Address,
+) -> Result<()> {
+    let token_contract = erc20Contracts::new(token_address, signer.clone().into());
+    let token_contract_caller = token_contract.mint(wallet_address, U256::from(1000));
+    let token_tx = token_contract_caller.send().await?;
+    let _ = token_tx.await?.unwrap();
+
+    let nft_contract = nftContract::new(nft_address, signer.into());
+    let nft_contract_caller = nft_contract.mint(wallet_address, U256::from(1));
+    let nft_tx = nft_contract_caller.send().await?;
+    let _ = nft_tx.await?.unwrap();
+    Ok(())
+}
 
 pub async fn create_new_auction(
     signer: SignerMiddleware<Provider<Http>, LocalWallet>,
@@ -26,7 +45,7 @@ pub async fn create_new_auction(
     duration: U256,
 ) -> Result<()> {
     // Approve NFT
-    let erc721_contract = erc721Contract::new(nft_contract_address, signer.clone().into());
+    let erc721_contract = nftContract::new(nft_contract_address, signer.clone().into());
     let erc721_contract_caller = erc721_contract.approve(auction_contract_address, token_id);
     let approve_tx = erc721_contract_caller.send().await?;
     let _ = approve_tx.await?.unwrap();
@@ -63,8 +82,9 @@ pub async fn get_auction(
 ) -> Result<AuctionEntity> {
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
     let auction = contract.auctions(auction_id).call().await?;
-    
-    Ok(AuctionEntity::from(auction))
+    let auction_entity = AuctionEntity::from(auction);
+    let _ = auction_entity.print_info();
+    Ok(auction_entity)
 }
 
 pub async fn get_total_auction(
@@ -90,7 +110,7 @@ pub async fn create_bid(
 ) -> Result<()> {
     let auction = get_auction(signer.clone(), auction_contract_address, auction_id).await?;
     // Approve token
-    let erc20_contract = erc20Contract::new(token_address, signer.clone().into());
+    let erc20_contract = erc20Contracts::new(token_address, signer.clone().into());
     let erc20_contract_caller =
         erc20_contract.approve(auction_contract_address, auction.asset.token_id);
     let approve_tx = erc20_contract_caller.send().await?;
@@ -202,3 +222,5 @@ pub async fn withdraw(
     );
     Ok(())
 }
+
+
