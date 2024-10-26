@@ -22,30 +22,31 @@ pub async fn get_winner_and_submit_proof(
     network: Network,
     batcher_url: &str
 ) -> Result<(Address, u128, Vec<u8>)> {
-
     let mut stdin = SP1Stdin::new();
     stdin.write(auction_data);
-
+    
     let client = ProverClient::new();
     let (pk, vk) = client.setup(ELF);
-
+    
     println!("Creating proof...");
-    let mut proof = client.prove(&pk, stdin).run()?;
+    let mut proof = client.prove(&pk, stdin).compressed().run()?;
     println!("Proof created successfully");
-
+    
     client.verify(&proof, &vk)?;
-
+    
     let pub_input = proof.public_values.to_vec();
     let _hash_data = proof.public_values.read::<[u8; 32]>().to_vec(); // hash(auctionData)
     let winner_addr = proof.public_values.read::<Vec<u8>>(); // winner address
     let winner_amount = proof.public_values.read::<u128>(); // winner amount
-
+    
     let proof = bincode::serialize(&proof).expect("Failed to serialize proof");
 
     // let proof = include_bytes!("../proof").to_vec();
     // let pub_input = include_bytes!("../pub_input").to_vec();
-    // let winner = pub_input[pub_input.len()-20..].to_vec();
-
+    // let winner_addr = vec![];
+    // let winner_amount = 0; // winner amount
+    dbg!(proof.len());
+    
     fs::write("proof", &proof).expect("Failed to write proof to file");
     fs::write("pub_input", &pub_input).expect("Failed to write pub_input to file");
     let verification_data = VerificationData {

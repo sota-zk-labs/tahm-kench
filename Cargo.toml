@@ -11,7 +11,7 @@ exclude = ["sp1-prover"]
 aligned-sp1-prover = { path = "sp1-prover" }
 bincode = "1.3.3"
 hex = "0.4.3"
-aligned-sdk = { git = "https://github.com/yetanotherco/aligned_layer", tag = "v0.10.0" }
+aligned-sdk = { git = "https://github.com/yetanotherco/aligned_layer", tag = "v0.10.2" }
 ethers = { tag = "v2.0.15-fix-reconnections", features = [
     "ws",
     "rustls",
