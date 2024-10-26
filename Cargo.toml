@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["prover-sdk"]
+members = ["prover-sdk", "ecies"]
 exclude = ["sp1-prover"]
 
 [workspace.dependencies]
@@ -18,8 +18,9 @@ ethers = { tag = "v2.0.15-fix-reconnections", features = [
 ], git = "https://github.com/yetanotherco/ethers-rs.git" }
 anyhow = "1.0.90"
 tokio = { version = "1.39.2", features = ["rt", "rt-multi-thread", "macros"] }
-ecies = { version = "0.2.6", default-features = false, features = ["pure", "std"] }
+ecies = { path = "ecies" }
 dialoguer = "0.11.0"
+rand = "0.8.5"
 
 [dependencies]
 bytes = "1.7.2"

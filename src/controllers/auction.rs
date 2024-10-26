@@ -1,13 +1,16 @@
 use aligned_sdk::core::types::Network;
 use aligned_sp1_prover::{AuctionData, Bidder};
 use anyhow::{Context, Result};
-use ecies::PublicKey;
+use ecies::private_key::PrivateKey;
+use ecies::{Ecies, PublicKey};
 use ethers::core::k256::ecdsa::SigningKey;
+use ethers::core::rand::rngs::OsRng;
 use ethers::middleware::SignerMiddleware;
 use ethers::prelude::*;
 use ethers::prelude::{Http, LocalWallet, Provider};
 use ethers::types::{Address, Bytes, U256};
 use prover_sdk::{encrypt_bidder_amount, get_winner_and_submit_proof};
+
 use crate::entities::auction::AuctionEntity;
 
 abigen!(erc721Contract, "./assets/erc721.json");
@@ -35,7 +38,7 @@ pub async fn create_new_auction(
     let zk_auction_contract = zkAuctionContract::new(auction_contract_address, signer.into());
     println!("1");
     let contract_caller = zk_auction_contract.create_auction(
-        Bytes::from(pbk_encryption.serialize()),
+        Bytes::from(pbk_encryption.to_bytes()),
         nft_contract_address,
         token_id,
         name,
@@ -63,7 +66,7 @@ pub async fn get_auction(
 ) -> Result<AuctionEntity> {
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
     let auction = contract.auctions(auction_id).call().await?;
-    
+
     Ok(AuctionEntity::from(auction))
 }
 
@@ -94,11 +97,15 @@ pub async fn create_bid(
     let erc20_contract_caller =
         erc20_contract.approve(auction_contract_address, auction.asset.token_id);
     let approve_tx = erc20_contract_caller.send().await?;
-    let _ = approve_tx.await?.unwrap();
+    approve_tx.await?.unwrap();
 
-    let encryption_key = PublicKey::parse((*auction.encryption_key.to_vec()).try_into()?).expect("Wrong on-chain encryption key");
+    let encryption_key = PublicKey::from_bytes(*auction.encryption_key.to_vec());
     // Fake encrypted price
-    let encrypted_price = encrypt_bidder_amount(&bid_price.as_u128(), &encryption_key);
+    let encrypted_price = encrypt_bidder_amount(
+        &bid_price.as_u128(),
+        Ecies::from_pvk(PrivateKey::from_rng(&mut OsRng)),
+        &encryption_key,
+    );
 
     // Create bid
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
@@ -137,7 +144,7 @@ pub async fn reveal_winner(
     wallet: Wallet<SigningKey>,
     rpc_url: &str,
     network: Network,
-    batcher_url: &str
+    batcher_url: &str,
 ) -> Result<()> {
     // Get list bids
     let bidders = get_list_bids(signer.clone(), auction_contract_address, auction_id)
@@ -157,7 +164,7 @@ pub async fn reveal_winner(
         },
         rpc_url,
         network,
-        batcher_url
+        batcher_url,
     )
     .await?;
 

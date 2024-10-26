@@ -8,7 +8,8 @@ use sp1_sdk::{ProverClient, SP1Stdin};
 use dialoguer::Confirm;
 use aligned_sdk::core::types::{Network, PriceEstimate, ProvingSystemId, VerificationData};
 use aligned_sdk::sdk::{estimate_fee, get_next_nonce, submit_and_wait_verification};
-use ecies::PublicKey;
+use ethers::core::rand::rngs::OsRng;
+use ecies::{Ecies, PublicKey};
 use ethers::prelude::Signer;
 
 pub const ELF: &[u8] = include_bytes!("../../sp1-prover/elf/riscv32im-succinct-zkvm-elf");
@@ -137,8 +138,8 @@ pub async fn get_winner_and_submit_proof(
     ))
 }
 
-pub fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
-    ecies::encrypt(&pbk.serialize(), &amount.to_be_bytes()).expect("failed to encrypt bidder data")
+pub fn encrypt_bidder_amount(amount: &u128, scheme: &Ecies, pbk: &PublicKey) -> Vec<u8> {
+    scheme.encrypt(&mut OsRng, pbk, &amount.to_be_bytes())
 }
 
 pub fn get_encryption_key() -> Result<PublicKey> {
@@ -153,11 +154,13 @@ mod tests {
     use std::str::FromStr;
     use std::{env, fs};
     use aligned_sdk::core::types::Network;
+    use ethers::core::rand::rngs::OsRng;
     use aligned_sp1_prover::{AuctionData, Bidder};
-    use ecies::PublicKey;
+    use ecies::{Ecies, PublicKey};
     use ethers::prelude::Signer;
     use ethers::signers::LocalWallet;
     use ethers::types::{Bytes, H160};
+    use ecies::private_key::PrivateKey;
     use crate::{encrypt_bidder_amount, ENCRYPTION_PUBLIC_KEY};
 
     #[tokio::test]
@@ -175,14 +178,15 @@ mod tests {
         )
             .unwrap();
 
+        let scheme = Ecies::from_pvk(PrivateKey::from_rng(&mut OsRng));
         let data = AuctionData {
             bidders: vec![
                 Bidder {
-                    encrypted_amount: encrypt_bidder_amount(&3, &pbk),
+                    encrypted_amount: encrypt_bidder_amount(&3, &scheme, &pbk),
                     address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
                 },
                 Bidder {
-                    encrypted_amount: encrypt_bidder_amount(&2, &pbk),
+                    encrypted_amount: encrypt_bidder_amount(&2, &scheme, &pbk),
                     address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
                 },
             ],
