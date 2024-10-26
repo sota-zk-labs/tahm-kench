@@ -41,7 +41,7 @@ pub async fn create_new_auction(
     description: String,
     nft_contract_address: Address,
     token_id: U256,
-    target_price: U256,
+    target_price: u128,
     duration: U256,
 ) -> Result<()> {
     // Approve NFT
@@ -106,7 +106,7 @@ pub async fn create_bid(
     auction_contract_address: Address,
     token_address: Address,
     auction_id: U256,
-    bid_price: U256,
+    bid_price: u128,
 ) -> Result<()> {
     let auction = get_auction(signer.clone(), auction_contract_address, auction_id).await?;
     // Approve token
@@ -118,7 +118,7 @@ pub async fn create_bid(
 
     let encryption_key = PublicKey::parse((*auction.encryption_key.to_vec()).try_into()?).expect("Wrong on-chain encryption key");
     // Fake encrypted price
-    let encrypted_price = encrypt_bidder_amount(&bid_price.as_u128(), &encryption_key);
+    let encrypted_price = encrypt_bidder_amount(&bid_price, &encryption_key);
 
     // Create bid
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
@@ -192,7 +192,7 @@ pub async fn reveal_winner(
         auction_id,
         Winner {
             winner: winner_addr,
-            price: U256::from(winner_amount),
+            price: winner_amount,
         },
         Bytes::from(verified_proof),
     );

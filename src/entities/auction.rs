@@ -7,13 +7,13 @@ pub struct AuctionEntity {
     pub encryption_key: Bytes, // Owner's public key
     pub asset: Asset,      // Asset being auctioned
     pub winner: Winner,    // Winner of the auction
-    pub deposit_price: U256,     // Deposit price when bidder start bid
+    pub deposit_price: u128,     // Deposit price when bidder start bid
     pub end_time: U256,          // Time when the bid phase end
     pub ended: bool,             // Status of the auction
 }
 
-impl From<(Address, Bytes, Asset, Winner, U256, U256, bool)> for AuctionEntity {
-    fn from(value: (Address, Bytes, Asset, Winner, U256, U256, bool)) -> Self {
+impl From<(Address, Bytes, Asset, Winner, u128, U256, bool)> for AuctionEntity {
+    fn from(value: (Address, Bytes, Asset, Winner, u128, U256, bool)) -> Self {
         let (owner, encryption_key, asset, winner, deposit_price, end_time, ended) = value;
         AuctionEntity {
             owner,
@@ -43,7 +43,7 @@ impl AuctionEntity {
         println!("Winner:");
         println!("  Address: {:?}", self.winner.winner);
         println!("  Encrypted Price: {:?}", self.winner.price);
-        println!("Deposit price: {:?} USDT", self.deposit_price.low_u128());
+        println!("Deposit price: {:?} USDT", self.deposit_price);
         println!("End Time: {:?}", self.end_time.low_u128());
         println!("Ended: {}", self.ended);
     }

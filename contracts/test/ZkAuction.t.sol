@@ -22,7 +22,7 @@ contract testZkAuction is Test {
     string public assetDescription = "Test Asset Description";
     uint256 public tokenId_1 = 1;
     uint256 public tokenId_2 = 2;
-    uint256 public depositPrice = 1 * 1e18;
+    uint128 public depositPrice = 1 * 1e18;
     uint256 public duration = 3600; // 1 hour
 
     function setUp() public {

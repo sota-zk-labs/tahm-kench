@@ -41,7 +41,7 @@ enum Commands {
         #[arg(short, long)]
         token_id: U256,
         #[arg(short, long)]
-        target_price: U256,
+        target_price: u128,
         #[arg(short, long, default_value = "1")]
         time: u64,
     },
@@ -55,7 +55,7 @@ enum Commands {
     /// Bid item
     Bid {
         #[arg(short, long)]
-        price: U256,
+        price: u128,
         #[arg(short, long)]
         auction_id: U256,
     },

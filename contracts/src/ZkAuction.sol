@@ -23,7 +23,7 @@ contract ZkAuction is IERC721Receiver {
         Asset asset; // Asset being auctioned
         Bid[] bids; // Array of bids placed on the auction
         Winner winner; // Winner of the auction
-        uint256 depositPrice; // Deposit price when bidder start bid
+        uint128 depositPrice; // Deposit price when bidder start bid
         uint256 endTime; // Time when the bid phase end
         bool ended; // Status of the auction
     }
@@ -42,7 +42,7 @@ contract ZkAuction is IERC721Receiver {
 
     struct Winner {
         address winner; // Address of the winner
-        uint256 price; // Price submitted of winner
+        uint128 price; // Price submitted of winner
     }
 
     uint256 public auctionCount; // Counter for auctions
@@ -57,7 +57,7 @@ contract ZkAuction is IERC721Receiver {
     // Events
     event AuctionCreated(uint256 indexed auctionId, address indexed owner);
     event NewBid(uint256 indexed auctionId, address indexed bidder, bytes encryptedPrice);
-    event AuctionEnded(uint256 indexed auctionId, address indexed winner, uint256 price);
+    event AuctionEnded(uint256 indexed auctionId, address indexed winner, uint128 price);
 
     constructor(address _lockToken) {
         lockToken = IERC20(_lockToken);
@@ -81,7 +81,7 @@ contract ZkAuction is IERC721Receiver {
         uint256 _tokenId,
         string memory _assetName,
         string memory _assetDescription,
-        uint256 _depositPrice,
+        uint128 _depositPrice,
         uint256 _duration
     ) public {
         require(_depositPrice > 0, "Deposit price must be greater than zero");
@@ -204,12 +204,13 @@ contract ZkAuction is IERC721Receiver {
             "Invalid public input"
         );
 
-        (bytes32 auctionHash, address winner_addr) = abi.decode(
+        (bytes32 auctionHash, address winner_addr, uint128 winner_price) = abi.decode(
             publicInput,
-            (bytes32, address)
+            (bytes32, address, uint128)
         );
 
         require(winner_addr == winner.winner, "Winner in proof does not match");
+        require(winner_price == winner.price, "Winner in proof does not match");
         require(calculateAuctionHash(auctionId) == auctionHash, "Auction hash does not match");
 
         (
