@@ -7,12 +7,12 @@ edition = "2021"
 #rsa = "0.9.6"
 sp1-zkvm = { git = "https://github.com/succinctlabs/sp1.git", rev = "v1.0.8-testnet" }
 serde = "1.0.210"
-tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "patch-v2.0.2", features = ["keccak"] }
 #serde_json = "1.0.128"
 #ecies-ed25519 = "0.5.1"
 #rand = "0.7.3"
 #ecies = { version = "0.2.6", default-features = false, features = ["pure", "std"]}
 ecies = { path = "../ecies" }
+tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "patch-v2.0.2", features = ["keccak"] }
 #rand = "0.8.5"
 
 [dev-dependencies]

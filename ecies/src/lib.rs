@@ -48,13 +48,9 @@ impl<S: SymmetricEncryptionScheme> Ecies<S> {
     fn get_symmetric_key(pvk: &PrivateKey, ephemeral_pbk: &PublicKey) -> Vec<u8> {
         let pvk_num = u128::from_be_bytes(pvk.to_bytes().try_into().unwrap());
         let curve = pvk.curve();
-        #[cfg(test)]
-        println!("cycle-tracker-start: get_symmetric_key");
         let res = curve
             .mul(&ephemeral_pbk.to_point(curve.mont_space()), pvk_num)
             .to_bytes(curve.mont_space());
-        #[cfg(test)]
-        println!("cycle-tracker-end: get_symmetric_key");
         res
     }
 }

@@ -29,7 +29,7 @@ deposit-to-aligned:
 
 test-prove:
 	cd sp1-prover && make gen-key && make elf-commit
-	cargo test --release --color=always --lib tests::test_sp1_prover --no-fail-fast --manifest-path prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output
+	RUST_BACKTRACE=1 cargo test --release --color=always --lib tests::test_sp1_prover --no-fail-fast --manifest-path prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture
 
 update-abi:
 	cd contracts && rm -rf cache out broadcast && forge build

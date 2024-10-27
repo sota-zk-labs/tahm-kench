@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tiny_keccak::{Hasher, Keccak};
 use ecies::Ecies;
+use ecies::private_key::PrivateKey;
+use ecies::symmetric_encryption::simple::SimpleSE;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct AuctionData {
@@ -16,7 +18,7 @@ pub struct Bidder {
 
 pub fn decrypt_bidder_data(scheme: &Ecies, bidder: &Bidder) -> u128 {
     u128::from_be_bytes(
-        scheme.decrypt(bidder.encrypted_amount.as_slice()).try_into().unwrap()
+        scheme.decrypt(&bidder.encrypted_amount).try_into().unwrap()
     )
 }
 
@@ -38,69 +40,34 @@ pub fn calc_auction_hash(auction_data: &AuctionData) -> [u8; 32] {
     output
 }
 
+pub fn find_winner(auction_data: &AuctionData, pvk: PrivateKey) -> (Vec<u8>, u128) {
+    let scheme = Ecies::<SimpleSE>::from_pvk(pvk);
+
+    let mut winner_addr = &vec![];
+    let mut winner_amount = 0;
+    for bidder in &auction_data.bidders {
+        let bidder_amount = decrypt_bidder_data(&scheme, bidder);
+        if winner_amount < bidder_amount {
+            winner_amount = bidder_amount;
+            winner_addr = &bidder.address;
+        }
+    }
+
+    (winner_addr.clone(), winner_amount)
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use std::fs::File;
-    use std::io::Read;
-    use std::process::Command;
 
     use ecies::{Ecies};
     use ecies::private_key::PrivateKey;
     use ecies::public_key::PublicKey;
     use rand::rngs::OsRng;
-    // use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding};
-    // use rsa::rand_core::OsRng;
-    // use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
 
     use crate::{calc_auction_hash, AuctionData, Bidder};
-    // use ecies_ed25519::generate_keypair;
-    // use rand::{CryptoRng, RngCore};
 
     const PVK_HEX: &str = include_str!("../private_encryption_key");
-
-    #[test]
-    fn test_sp1_prover() {
-        // compile main
-        let output = Command::new("cargo")
-            .args(["prove", "build"])
-            .output()
-            .unwrap();
-        println!("{:?}", String::from_utf8_lossy(output.stdout.as_slice()));
-        let elf = {
-            let mut buffer = Vec::new();
-            File::open("./elf/riscv32im-succinct-zkvm-elf")
-                .unwrap()
-                .read_to_end(&mut buffer)
-                .unwrap();
-            buffer
-        };
-
-        // let mut rng = rand::thread_rng();
-        let (_, pbk) = get_key();
-
-        let mut stdin = SP1Stdin::new();
-        stdin.write(&auction_data(&pbk));
-
-        let client = ProverClient::new();
-        let (pk, vk) = client.setup(elf.as_slice());
-
-        let Ok(mut proof) = client.prove(&pk, stdin).run() else {
-            println!("Something went wrong!");
-            return;
-        };
-
-        println!("Proof generated successfully. Verifying proof...");
-        client.verify(&proof, &vk).expect("verification failed");
-        println!("Proof verified successfully.");
-
-        // println!("{:?}", proof.public_values);
-        let hash_data = proof.public_values.read::<[u8; 32]>();
-        println!("{:?}", hash_data);
-        let winner_addr = proof.public_values.read::<Vec<u8>>();
-        println!("{:?}", winner_addr);
-        // Todo: validate with data
-    }
 
     #[test]
     fn test_decrypt_data() {
@@ -140,7 +107,7 @@ mod tests {
 
     fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
         let scheme: Ecies = Ecies::from_pvk(PrivateKey::from_rng(&mut OsRng));
-        scheme.encrypt(&mut OsRng, pbk, &amount.to_be_bytes())
+        scheme.encrypt(&mut OsRng, pbk, &amount.to_be_bytes().to_vec())
     }
 
     pub fn get_key() -> (PrivateKey, PublicKey) {

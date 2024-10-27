@@ -117,7 +117,6 @@ impl Ecc {
         Point::new(x, y)
     }
 
-    #[cfg_attr(test, sp1_derive::cycle_tracker)]
     pub fn mul(&self, a: &Point, mut k: u128) -> Point {
         if a.is_none {
             return Point::none_point(&self.mont_space);
@@ -147,11 +146,7 @@ impl Ecc {
 
     pub fn get_public_key(&self, private_key: Vec<u8>) -> PublicKey {
         let key_num = u128::from_be_bytes(private_key.try_into().unwrap());
-        #[cfg(test)]
-        println!("cycle-tracker-start: get_public_key");
         let (x, y) = self.norm_point(&self.mul(&self.g, key_num));
-        #[cfg(test)]
-        println!("cycle-tracker-end: get_public_key");
         PublicKey::from_point(x, y)
     }
 

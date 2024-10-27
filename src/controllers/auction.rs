@@ -104,7 +104,7 @@ pub async fn create_bid(
     let encryption_key = PublicKey::from_bytes(auction.encryption_key.to_vec());
     // Fake encrypted price
     let encrypted_price = encrypt_bidder_amount(
-        &bid_price.as_u128(),
+        &bid_price,
         &Ecies::from_pvk(PrivateKey::from_rng(&mut OsRng)),
         &encryption_key,
     );
