@@ -9,6 +9,9 @@ use ecies::public_key::PublicKey;
 use ecies::Ecies;
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::core::rand::rngs::OsRng;
+use ecies::PublicKey;
+use ethers::abi::{encode, Token, Uint};
+use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::Signer;
 use ethers::signers::Wallet;
 use ethers::types::{Address, U256};
@@ -16,6 +19,7 @@ use sp1_sdk::{ProverClient, SP1Stdin};
 
 pub const ELF: &[u8] = include_bytes!("../../sp1-prover/elf/riscv32im-succinct-zkvm-elf");
 pub const ENCRYPTION_PUBLIC_KEY: &str = include_str!("../../sp1-prover/encryption_key");
+pub const ENCRYPTION_PRIVATE_KEY: &str = include_str!("../../sp1-prover/private_encryption_key");
 
 /// Return winner and proof for the function `revealWinner` in the contract
 pub async fn get_winner_and_submit_proof(
@@ -23,10 +27,11 @@ pub async fn get_winner_and_submit_proof(
     auction_data: &AuctionData,
     rpc_url: &str,
     network: Network,
-    batcher_url: &str,
+    batcher_url: &str
 ) -> Result<(Address, u128, Vec<u8>)> {
     let mut stdin = SP1Stdin::new();
     stdin.write(auction_data);
+    stdin.write(&hex::decode(ENCRYPTION_PRIVATE_KEY)?);
 
     let client = ProverClient::new();
     let (pk, vk) = client.setup(ELF);
@@ -39,14 +44,15 @@ pub async fn get_winner_and_submit_proof(
 
     let pub_input = proof.public_values.to_vec();
     let _hash_data = proof.public_values.read::<[u8; 32]>().to_vec(); // hash(auctionData)
-    let winner_addr = proof.public_values.read::<Vec<u8>>(); // winner address
+    let winner_addr = Address::from_slice(proof.public_values.read::<Vec<u8>>().as_slice()); // winner address
     let winner_amount = proof.public_values.read::<u128>(); // winner amount
 
     let proof = bincode::serialize(&proof).expect("Failed to serialize proof");
 
     // let proof = include_bytes!("../proof").to_vec();
     // let pub_input = include_bytes!("../pub_input").to_vec();
-    // let winner_addr = vec![];
+    // println!("{:?}", hex::encode(&pub_input));
+    // let winner_addr = vec![1u8];
     // let winner_amount = 0; // winner amount
     dbg!(proof.len());
 
@@ -101,43 +107,48 @@ pub async fn get_winner_and_submit_proof(
     let mut index_in_batch = [0; 32];
     U256::from(aligned_verification_data.index_in_batch).to_big_endian(&mut index_in_batch);
 
-    let merkle_path = aligned_verification_data
-        .batch_inclusion_proof
-        .merkle_path
-        .as_slice()
-        .iter()
-        .flatten();
+    let merkle_path: Vec<u8> = flatten(
+        aligned_verification_data
+            .batch_inclusion_proof
+            .merkle_path
+            .as_slice(),
+    );
 
-    let mut verified_proof = pub_input;
-    verified_proof.extend(
-        aligned_verification_data
-            .verification_data_commitment
-            .proof_commitment,
-    );
-    verified_proof.extend(
-        aligned_verification_data
-            .verification_data_commitment
-            .pub_input_commitment,
-    );
-    verified_proof.extend(
-        aligned_verification_data
-            .verification_data_commitment
-            .proving_system_aux_data_commitment,
-    );
-    verified_proof.extend(
-        aligned_verification_data
-            .verification_data_commitment
-            .proof_generator_addr,
-    );
-    verified_proof.extend(aligned_verification_data.batch_merkle_root);
-    verified_proof.extend(merkle_path);
-    verified_proof.extend(index_in_batch);
+    let verified_proof = encode(&[
+        Token::Bytes(pub_input),
+        Token::FixedBytes(
+            aligned_verification_data
+                .verification_data_commitment
+                .proof_commitment
+                .to_vec(),
+        ),
+        Token::FixedBytes(
+            aligned_verification_data
+                .verification_data_commitment
+                .pub_input_commitment
+                .to_vec(),
+        ),
+        Token::FixedBytes(
+            aligned_verification_data
+                .verification_data_commitment
+                .proving_system_aux_data_commitment
+                .to_vec(),
+        ),
+        Token::FixedBytes(
+            aligned_verification_data
+                .verification_data_commitment
+                .proof_generator_addr
+                .to_vec(),
+        ),
+        Token::FixedBytes(aligned_verification_data.batch_merkle_root.to_vec()),
+        Token::Bytes(merkle_path),
+        Token::Uint(Uint::from(index_in_batch)),
+    ]);
 
-    Ok((
-        Address::from_slice(&winner_addr),
-        winner_amount,
-        verified_proof,
-    ))
+    fs::write("verified_proof", &verified_proof)
+        .expect("Failed to write verified proof to file");
+
+    Ok((winner_addr, winner_amount, verified_proof))
 }
 
 pub fn encrypt_bidder_amount(amount: &u128, scheme: &Ecies, pbk: &PublicKey) -> Vec<u8> {
@@ -146,11 +157,26 @@ pub fn encrypt_bidder_amount(amount: &u128, scheme: &Ecies, pbk: &PublicKey) -> 
 
 pub fn get_encryption_key() -> Result<PublicKey> {
     Ok(PublicKey::from_bytes(hex::decode(ENCRYPTION_PUBLIC_KEY)?))
+    Ok(
+        PublicKey::parse((*hex::decode(ENCRYPTION_PUBLIC_KEY).unwrap()).try_into()?)
+            .expect("parsing encryption public key failed"),
+    )
+}
+
+pub fn flatten(vec: &[[u8; 32]]) -> Vec<u8> {
+    let mut res = vec![];
+    for v in vec.iter() {
+        res.extend_from_slice(v);
+    }
+    res
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{encrypt_bidder_amount, get_encryption_key};
+    use std::str::FromStr;
+    use std::env;
+
     use aligned_sdk::core::types::Network;
     use aligned_sp1_prover::{AuctionData, Bidder};
     use ecies::private_key::PrivateKey;
@@ -165,6 +191,8 @@ mod tests {
     use std::str::FromStr;
     use std::{env, fs};
 
+    use crate::{encrypt_bidder_amount, ENCRYPTION_PUBLIC_KEY};
+
     #[tokio::test]
     async fn test_submit_proof() {
         let rpc_url = "https://ethereum-holesky-rpc.publicnode.com";
@@ -173,63 +201,14 @@ mod tests {
         let wallet = LocalWallet::from_str(&env::var("PRIVATE_KEY").unwrap())
             .unwrap()
             .with_chain_id(17000u64);
-
-        let (_winner_addr, winner_amount, verified_proof) = super::get_winner_and_submit_proof(
-            wallet,
-            &auction_data(),
-            rpc_url,
-            network,
-            batcher_url,
+        let pbk = PublicKey::parse(
+            (*hex::decode(ENCRYPTION_PUBLIC_KEY).unwrap())
+                .try_into()
+                .unwrap(),
         )
-        .await
         .unwrap();
-        dbg!(winner_amount);
-        fs::write("verified_proof", &verified_proof).unwrap();
-    }
 
-    #[test]
-    fn test_sp1_prover() {
-        let elf = {
-            let mut buffer = Vec::new();
-            File::open("../sp1-prover/elf/riscv32im-succinct-zkvm-elf")
-                .unwrap()
-                .read_to_end(&mut buffer)
-                .unwrap();
-            buffer
-        };
-
-        // let mut rng = rand::thread_rng();
-
-        let mut stdin = SP1Stdin::new();
-        stdin.write(&auction_data());
-
-        let client = ProverClient::new();
-        let (pk, vk) = client.setup(elf.as_slice());
-
-        let Ok(mut proof) = client.prove(&pk, stdin).compressed().run() else {
-            println!("Something went wrong!");
-            return;
-        };
-        
-        println!("Proof generated successfully. Verifying proof...");
-        client.verify(&proof, &vk).expect("verification failed");
-        println!("Proof verified successfully.");
-        
-        // println!("{:?}", proof.public_values);
-        let hash_data = proof.public_values.read::<[u8; 32]>();
-        dbg!(hash_data);
-        let winner_addr = proof.public_values.read::<Vec<u8>>();
-        dbg!(winner_addr);
-        let winner_price = proof.public_values.read::<u128>();
-        dbg!(winner_price);
-        // Todo: validate with data
-    }
-
-    fn auction_data() -> AuctionData {
-        let pbk = get_encryption_key().unwrap();
-
-        let scheme = Ecies::from_pvk(PrivateKey::from_rng(&mut OsRng));
-        AuctionData {
+        let data = AuctionData {
             bidders: vec![
                 Bidder {
                     encrypted_amount: encrypt_bidder_amount(&3, &scheme, &pbk),
@@ -241,7 +220,13 @@ mod tests {
                 },
             ],
             id: vec![0; 32],
-        }
+        };
+
+        let (_winner_addr, winner_amount, _verified_proof) =
+            super::get_winner_and_submit_proof(wallet, &data, rpc_url, network, batcher_url)
+                .await
+                .unwrap();
+        dbg!(winner_amount);
     }
 
     #[test]
@@ -254,5 +239,8 @@ mod tests {
 
         let y = Bytes::from(vec![1, 2, 3]);
         assert_eq!(y.to_vec(), vec![1, 2, 3]);
+
+        let g = include_bytes!("../pub_input");
+        println!("{:?}", g);
     }
 }

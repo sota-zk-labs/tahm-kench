@@ -6,7 +6,7 @@ use serde::Deserialize;
 pub struct ChainConfig {
     pub rpc_url: String,
     pub network: String,
-    pub aligned_batcher_url: String
+    pub aligned_batcher_url: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -14,6 +14,8 @@ pub struct Config {
     pub chain: ChainConfig,
     pub contract_address: H160,
     pub token_address: H160,
+    pub nft_address: H160,
+    pub wallet_address_test: H160,
 }
 
 impl Config {

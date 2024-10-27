@@ -1,5 +1,7 @@
-contract_address = "0x0c0a800b93c0379da12596c4fba92aab41019197"
-token_address = "0x5Fcd5d9f6444dD23Ca2af792B58B041A14fB34EB"
+contract_address = "0xe5187914b2d800bbfc69185616b8322930549678"
+token_address = "0x264c4272845c8c68ab10f6d4d62b5af88a221010"
+nft_address = "0xcb356f9df6aff96f8e75054dbfb1fd60ec9d7b73"
+wallet_address_test = "0xeDe4C2b4BdBE580750a99F016b0A1581C3808FA3"
 [chain]
 etherscan_api_key = "2G4MBDIY1RNFHVZS27HR1KKVBHCX8YJ7WE"
 rpc_url = "https://ethereum-holesky-rpc.publicnode.com"
