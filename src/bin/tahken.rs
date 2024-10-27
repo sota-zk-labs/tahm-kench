@@ -10,7 +10,9 @@ use ethers::signers::{LocalWallet, Signer};
 use home::home_dir;
 use prover_sdk::get_encryption_key;
 use zk_auction::config::Config;
-use zk_auction::controllers::auction::{create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, set_up, withdraw};
+use zk_auction::controllers::auction::{
+    create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, set_up, withdraw,
+};
 
 #[derive(Parser, Debug)]
 #[command(name = "tahken")]
@@ -39,16 +41,16 @@ enum Commands {
         #[arg(short, long)]
         nft_contract_address: Address,
         #[arg(short, long)]
-        token_id: U256,
+        token_id: u128,
         #[arg(short, long)]
         target_price: u128,
         #[arg(short, long, default_value = "3600")]
-        time: u64,
+        time: u128,
     },
     /// Get detail auctions
     GetAuction {
         #[arg(short, long)]
-        auction_id: U256,
+        auction_id: u128,
     },
     /// Get total auctions
     ListAuctions,
@@ -57,17 +59,17 @@ enum Commands {
         #[arg(short, long)]
         price: u128,
         #[arg(short, long)]
-        auction_id: U256,
+        auction_id: u128,
     },
     /// Reveal winner
     RevealWinner {
         #[arg(short, long)]
-        auction_id: U256,
+        auction_id: u128,
     },
     /// Withdraw deposit token
     Withdraw {
         #[arg(short, long)]
-        auction_id: U256,
+        auction_id: u128,
     },
 }
 
@@ -103,7 +105,7 @@ async fn main() -> Result<()> {
         .expect("Failed to decrypt keystore")
         .with_chain_id(chain_id.as_u64());
 
-    let encryption_key = get_encryption_key()?;
+    let encryption_key = get_encryption_key().unwrap();
     let signer = SignerMiddleware::new(provider.clone(), wallet.clone());
 
     match args.command {
@@ -127,7 +129,7 @@ async fn main() -> Result<()> {
                     name,
                     description,
                     nft_contract_address,
-                    token_id,
+                    U256::from(token_id),
                     target_price,
                     U256::from(time),
                 )
@@ -136,16 +138,12 @@ async fn main() -> Result<()> {
                 Ok(())
             }
             Commands::GetAuction { auction_id } => {
-                get_auction(signer, config.contract_address, auction_id)
+                get_auction(signer, config.contract_address, U256::from(auction_id))
                     .await
                     .unwrap_or_else(|_| panic!("Failed to get auction with id: {}", auction_id));
-                
                 Ok(())
             }
             Commands::ListAuctions => {
-                set_up(signer.clone(), config.token_address, config.nft_address, config.wallet_address_test)
-                    .await
-                    .expect("Failed to set up contract");
                 get_total_auction(signer, config.contract_address)
                     .await
                     .expect("Failed to get total auction");
@@ -156,7 +154,7 @@ async fn main() -> Result<()> {
                     signer,
                     config.contract_address,
                     config.token_address,
-                    auction_id,
+                    U256::from(auction_id),
                     price,
                 )
                 .await
@@ -167,22 +165,24 @@ async fn main() -> Result<()> {
                 reveal_winner(
                     signer,
                     config.contract_address,
-                    auction_id,
+                    U256::from(auction_id),
                     wallet,
                     rpc_url,
                     network,
                     aligned_batcher_url,
                 )
                 .await
-                .unwrap_or_else(|_| panic!("Failed to reveal winner of auction with id: {}",
-                    auction_id));
+                .unwrap_or_else(|_| {
+                    panic!("Failed to reveal winner of auction with id: {}", auction_id)
+                });
                 Ok(())
             }
             Commands::Withdraw { auction_id } => {
-                withdraw(signer, config.contract_address, auction_id)
+                withdraw(signer, config.contract_address, U256::from(auction_id))
                     .await
-                    .unwrap_or_else(|_| panic!("Failed to withdraw from auction with id: {}",
-                        auction_id));
+                    .unwrap_or_else(|_| {
+                        panic!("Failed to withdraw from auction with id: {}", auction_id)
+                    });
                 Ok(())
             }
         },
