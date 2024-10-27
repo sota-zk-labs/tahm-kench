@@ -15,6 +15,7 @@ use sp1_sdk::{ProverClient, SP1Stdin};
 
 pub const ELF: &[u8] = include_bytes!("../../sp1-prover/elf/riscv32im-succinct-zkvm-elf");
 pub const ENCRYPTION_PUBLIC_KEY: &str = include_str!("../../sp1-prover/encryption_key");
+pub const ENCRYPTION_PRIVATE_KEY: &str = include_str!("../../sp1-prover/private_encryption_key");
 
 /// Return winner and proof for the function `revealWinner` in the contract
 pub async fn get_winner_and_submit_proof(
@@ -26,26 +27,27 @@ pub async fn get_winner_and_submit_proof(
 ) -> Result<(Address, u128, Vec<u8>)> {
     let mut stdin = SP1Stdin::new();
     stdin.write(auction_data);
-
+    stdin.write(&hex::decode(ENCRYPTION_PRIVATE_KEY)?);
+    
     let client = ProverClient::new();
     let (pk, vk) = client.setup(ELF);
-
+    
     println!("Creating proof...");
     let mut proof = client.prove(&pk, stdin).compressed().run()?;
     println!("Proof created successfully");
-
+    
     client.verify(&proof, &vk)?;
-
+    
     let pub_input = proof.public_values.to_vec();
-    let hash_data = proof.public_values.read::<[u8; 32]>().to_vec(); // hash(auctionData)
+    let _hash_data = proof.public_values.read::<[u8; 32]>().to_vec(); // hash(auctionData)
     let winner_addr = Address::from_slice(proof.public_values.read::<Vec<u8>>().as_slice()); // winner address
     let winner_amount = proof.public_values.read::<u128>(); // winner amount
-
+    
     let proof = bincode::serialize(&proof).expect("Failed to serialize proof");
 
     // let proof = include_bytes!("../proof").to_vec();
     // let pub_input = include_bytes!("../pub_input").to_vec();
-    // println!("{:?}", pub_input);
+    // println!("{:?}", hex::encode(&pub_input));
     // let winner_addr = vec![1u8];
     // let winner_amount = 0; // winner amount
     // // dbg!(proof.len());
@@ -65,15 +67,15 @@ pub async fn get_winner_and_submit_proof(
         proof_generator_addr: wallet.address(),
         vm_program_code: Some(ELF.to_vec()),
         verification_key: None,
-        pub_input: Some(pub_input),
+        pub_input: Some(pub_input.clone()),
     };
     let max_fee = estimate_fee(rpc_url, PriceEstimate::Instant)
         .await
         .expect("failed to fetch gas price from the blockchain");
-
+    
     #[cfg(not(test))]
     let max_fee_string = ethers::utils::format_units(max_fee, 18)?;
-
+    
     #[cfg(not(test))]
     if !Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
         .with_prompt(format!("Aligned will use at most {max_fee_string} eth to verify your proof. Do you want to continue?"))
@@ -81,13 +83,13 @@ pub async fn get_winner_and_submit_proof(
         .expect("Failed to read user input") {
         return Err(anyhow!(""))
     }
-
+    
     let nonce = get_next_nonce(rpc_url, wallet.address(), network)
         .await
         .expect("Failed to get next nonce");
-
+    
     println!("Submitting your proof...");
-
+    
     let aligned_verification_data = submit_and_wait_verification(
         batcher_url,
         rpc_url,
@@ -99,28 +101,24 @@ pub async fn get_winner_and_submit_proof(
     )
     .await
     .unwrap();
-
+    
     println!(
         "Proof submitted and verified successfully on batch {}",
         hex::encode(aligned_verification_data.batch_merkle_root)
     );
-
+    
     let mut index_in_batch = [0; 32];
     U256::from(aligned_verification_data.index_in_batch).to_big_endian(&mut index_in_batch);
-
+    
     let merkle_path: Vec<u8> = flatten(
         aligned_verification_data
             .batch_inclusion_proof
             .merkle_path
             .as_slice(),
     );
-
+    
     let verified_proof = encode(&[
-        Token::Bytes(encode(&[
-            Token::FixedBytes(hash_data),
-            Token::Address(Address::from(winner_addr)),
-            Token::Uint(Uint::from(winner_amount)),
-        ])),
+        Token::Bytes(pub_input),
         Token::FixedBytes(
             aligned_verification_data
                 .verification_data_commitment
@@ -149,10 +147,10 @@ pub async fn get_winner_and_submit_proof(
         Token::Bytes(merkle_path),
         Token::Uint(Uint::from(index_in_batch)),
     ]);
-
+    
     fs::write("verified_proof", &verified_proof)
         .expect("Failed to write verified proof to file");
-
+    
     Ok((winner_addr, winner_amount, verified_proof))
 }
 

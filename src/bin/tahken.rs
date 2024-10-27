@@ -11,7 +11,7 @@ use home::home_dir;
 use prover_sdk::get_encryption_key;
 use zk_auction::config::Config;
 use zk_auction::controllers::auction::{
-    create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, set_up, withdraw,
+    create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
 };
 
 #[derive(Parser, Debug)]
@@ -105,7 +105,7 @@ async fn main() -> Result<()> {
         .expect("Failed to decrypt keystore")
         .with_chain_id(chain_id.as_u64());
 
-    let encryption_key = get_encryption_key().unwrap();
+    let encryption_key = get_encryption_key()?;
     let signer = SignerMiddleware::new(provider.clone(), wallet.clone());
 
     match args.command {

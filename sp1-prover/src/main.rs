@@ -1,14 +1,14 @@
 #![no_main]
 
 use ecies::SecretKey;
-use aligned_sp1_prover::{calc_auction_hash, decrypt_bidder_data, AuctionData, PVK_HEX};
+use aligned_sp1_prover::{calc_auction_hash, decrypt_bidder_data, AuctionData};
 
 sp1_zkvm::entrypoint!(main);
 
 pub fn main() {
     let auction_data = sp1_zkvm::io::read::<AuctionData>();
 
-    let pvk = SecretKey::parse_slice(&hex::decode(PVK_HEX).unwrap())
+    let pvk = SecretKey::parse_slice(&sp1_zkvm::io::read::<Vec<u8>>())
         .expect("missing private key to encode bidder data");
     
     let mut winner_addr = &vec![];

@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 #rsa = "0.9.6"
-hex = "0.4.3"
 sp1-zkvm = { git = "https://github.com/succinctlabs/sp1.git", rev = "v1.0.8-testnet" }
 serde = "1.0.210"
 tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "patch-v2.0.2", features = ["keccak"] }
@@ -18,3 +17,4 @@ ecies = { version = "0.2.6", default-features = false, features = ["pure", "std"
 [dev-dependencies]
 sp1-sdk = "3.0.0"
 rand = "0.8.5"
+hex = "0.4.3"

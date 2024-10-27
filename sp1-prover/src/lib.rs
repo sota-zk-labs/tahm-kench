@@ -2,8 +2,6 @@ use ecies::SecretKey;
 use serde::{Deserialize, Serialize};
 use tiny_keccak::{Hasher, Keccak};
 
-pub const PVK_HEX: &str = include_str!("../private_encryption_key");
-
 #[derive(Deserialize, Serialize, Debug)]
 pub struct AuctionData {
     pub bidders: Vec<Bidder>,
@@ -46,23 +44,23 @@ pub fn calc_auction_hash(auction_data: &AuctionData) -> [u8; 32] {
 #[cfg(test)]
 mod tests {
     use std::fs;
-    // use std::env;
     use std::fs::File;
     use std::io::Read;
     use std::process::Command;
 
     use ecies::{PublicKey, SecretKey};
-    use hex::ToHex;
     use rand::rngs::OsRng;
     // use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding};
     // use rsa::rand_core::OsRng;
     // use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
     use sp1_sdk::{ProverClient, SP1Stdin};
 
-    use crate::{calc_auction_hash, AuctionData, Bidder, PVK_HEX};
+    use crate::{calc_auction_hash, AuctionData, Bidder};
     // use ecies_ed25519::generate_keypair;
     // use rand::{CryptoRng, RngCore};
 
+    const PVK_HEX: &str = include_str!("../private_encryption_key");
+    
     #[test]
     fn test_sp1_prover() {
         // compile main
