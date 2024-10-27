@@ -16,7 +16,7 @@ deploy-contract:
 	@. ./contracts/deploy.sh
 
 test-submit-proof:
-	RUST_BACKTRACE=1 cargo test --release --color=always --lib tests::test_submit_proof --no-fail-fast --manifest-path /home/ubuntu/code/zkp/tahm-kench/prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture
+	RUST_BACKTRACE=1 cargo test --release --color=always --lib tests::test_submit_proof --no-fail-fast --manifest-path prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture
 
 deposit-to-aligned:
 	aligned deposit-to-batcher \
@@ -24,3 +24,8 @@ deposit-to-aligned:
     --network holesky \
     --keystore_path $(KEYSTORE_PATH) \
     --amount 0.004ether
+
+test-prove:
+	cd sp1-prover && make gen-key && make elf-commit
+	cargo test --release --color=always --lib tests::test_sp1_prover --no-fail-fast --manifest-path prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output
+

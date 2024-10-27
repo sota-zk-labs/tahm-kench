@@ -8,8 +8,3 @@ make gen-key
 ```bash
 make elf-commit
 ```
-
-## Test circuit
-```bash
-make test
-```

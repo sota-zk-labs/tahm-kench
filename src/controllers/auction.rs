@@ -2,19 +2,20 @@ use aligned_sdk::core::types::Network;
 use aligned_sp1_prover::{AuctionData, Bidder};
 use anyhow::{Context, Result};
 use ecies::private_key::PrivateKey;
-use ecies::{Ecies, PublicKey};
+use ecies::{Ecies};
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::core::rand::rngs::OsRng;
 use ethers::middleware::SignerMiddleware;
 use ethers::prelude::*;
 use ethers::prelude::{Http, LocalWallet, Provider};
 use ethers::types::{Address, Bytes, U256};
+use ecies::public_key::PublicKey;
 use prover_sdk::{encrypt_bidder_amount, get_winner_and_submit_proof};
 
 use crate::entities::auction::AuctionEntity;
 
 abigen!(erc721Contract, "./assets/erc721.json");
-abigen!(erc20Contract, "./assets/erc20.json");
+abigen!(erc20Contracts, "./assets/erc20.json");
 abigen!(zkAuctionContract, "./assets/ZkAuction.json");
 
 pub async fn create_new_auction(
@@ -38,7 +39,7 @@ pub async fn create_new_auction(
     let zk_auction_contract = zkAuctionContract::new(auction_contract_address, signer.into());
     println!("1");
     let contract_caller = zk_auction_contract.create_auction(
-        Bytes::from(pbk_encryption.to_bytes()),
+        Bytes::from(pbk_encryption.to_bytes().to_vec()),
         nft_contract_address,
         token_id,
         name,
@@ -93,17 +94,17 @@ pub async fn create_bid(
 ) -> Result<()> {
     let auction = get_auction(signer.clone(), auction_contract_address, auction_id).await?;
     // Approve token
-    let erc20_contract = erc20Contract::new(token_address, signer.clone().into());
+    let erc20_contract = erc20Contracts::new(token_address, signer.clone().into());
     let erc20_contract_caller =
         erc20_contract.approve(auction_contract_address, auction.asset.token_id);
     let approve_tx = erc20_contract_caller.send().await?;
     approve_tx.await?.unwrap();
 
-    let encryption_key = PublicKey::from_bytes(*auction.encryption_key.to_vec());
+    let encryption_key = PublicKey::from_bytes(auction.encryption_key.to_vec());
     // Fake encrypted price
     let encrypted_price = encrypt_bidder_amount(
         &bid_price.as_u128(),
-        Ecies::from_pvk(PrivateKey::from_rng(&mut OsRng)),
+        &Ecies::from_pvk(PrivateKey::from_rng(&mut OsRng)),
         &encryption_key,
     );
 

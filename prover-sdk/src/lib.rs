@@ -150,10 +150,7 @@ pub fn get_encryption_key() -> Result<PublicKey> {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-    use std::{env, fs};
-
-    use crate::{encrypt_bidder_amount, get_encryption_key, ELF};
+    use crate::{encrypt_bidder_amount, get_encryption_key};
     use aligned_sdk::core::types::Network;
     use aligned_sp1_prover::{AuctionData, Bidder};
     use ecies::private_key::PrivateKey;
@@ -163,6 +160,10 @@ mod tests {
     use ethers::signers::LocalWallet;
     use ethers::types::{Bytes, H160};
     use sp1_sdk::{ProverClient, SP1Stdin};
+    use std::fs::File;
+    use std::io::Read;
+    use std::str::FromStr;
+    use std::{env, fs};
 
     #[tokio::test]
     async fn test_submit_proof() {
@@ -187,18 +188,41 @@ mod tests {
     }
 
     #[test]
-    fn test_prove() {
+    fn test_sp1_prover() {
+        let elf = {
+            let mut buffer = Vec::new();
+            File::open("../sp1-prover/elf/riscv32im-succinct-zkvm-elf")
+                .unwrap()
+                .read_to_end(&mut buffer)
+                .unwrap();
+            buffer
+        };
+
+        // let mut rng = rand::thread_rng();
+
         let mut stdin = SP1Stdin::new();
         stdin.write(&auction_data());
 
         let client = ProverClient::new();
-        let (pk, vk) = client.setup(ELF);
+        let (pk, vk) = client.setup(elf.as_slice());
 
-        println!("Creating proof...");
-        let proof = client.prove(&pk, stdin).run().unwrap();
-        println!("Proof created successfully");
+        let Ok(mut proof) = client.prove(&pk, stdin).compressed().run() else {
+            println!("Something went wrong!");
+            return;
+        };
         
-        client.verify(&proof, &vk).unwrap();
+        println!("Proof generated successfully. Verifying proof...");
+        client.verify(&proof, &vk).expect("verification failed");
+        println!("Proof verified successfully.");
+        
+        // println!("{:?}", proof.public_values);
+        let hash_data = proof.public_values.read::<[u8; 32]>();
+        dbg!(hash_data);
+        let winner_addr = proof.public_values.read::<Vec<u8>>();
+        dbg!(winner_addr);
+        let winner_price = proof.public_values.read::<u128>();
+        dbg!(winner_price);
+        // Todo: validate with data
     }
 
     fn auction_data() -> AuctionData {

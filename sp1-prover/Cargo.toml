@@ -17,5 +17,4 @@ ecies = { path = "../ecies" }
 #rand = "0.8.5"
 
 [dev-dependencies]
-sp1-sdk = "3.0.0"
 rand = "0.8.5"
