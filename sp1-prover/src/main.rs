@@ -9,7 +9,7 @@ pub fn main() {
     let auction_data = sp1_zkvm::io::read::<AuctionData>();
     let pvk_bytes = sp1_zkvm::io::read::<Vec<u8>>();
 
-    let pvk = PrivateKey::from_bytes(pvk_bytes);
+    let pvk = PrivateKey::from_bytes(&pvk_bytes);
 
     // let (winner_addr, winner_amount) = (vec![0u128], 0u128);
     let (winner_addr, winner_amount) = find_winner(&auction_data, pvk);

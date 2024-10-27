@@ -1,8 +1,11 @@
 use std::marker::PhantomData;
+
+use rand::Rng;
+use secp256k1::{All, Scalar, Secp256k1};
+
 use crate::private_key::PrivateKey;
 use crate::public_key::PublicKey;
 use crate::symmetric_encryption::scheme::SymmetricEncryptionScheme;
-use rand::Rng;
 use crate::symmetric_encryption::simple::SimpleSE;
 
 pub mod ecc;
@@ -15,7 +18,8 @@ pub mod utils;
 pub struct Ecies<S: SymmetricEncryptionScheme = SimpleSE> {
     pvk: PrivateKey,
     pbk: PublicKey,
-    phantom_data: PhantomData<S>
+    secp: Secp256k1<All>,
+    phantom_data: PhantomData<S>,
 }
 
 impl<S: SymmetricEncryptionScheme> Ecies<S> {
@@ -24,43 +28,45 @@ impl<S: SymmetricEncryptionScheme> Ecies<S> {
         Ecies {
             pvk,
             pbk,
+            secp: Secp256k1::new(),
             phantom_data: PhantomData,
         }
     }
 
     pub fn encrypt(&self, rng: &mut impl Rng, pbk: &PublicKey, plaintext: &[u8]) -> Vec<u8> {
-        let scheme = S::new(Self::get_symmetric_key(&self.pvk, pbk));
+        let scheme = S::new(self.get_symmetric_key(&self.pvk, pbk));
         let mut res = self.pbk.to_bytes().to_vec();
         res.extend(&scheme.encrypt(rng, plaintext));
         res
     }
 
     pub fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
-        let sender_pbk = PublicKey::from_bytes(ciphertext[..32].to_vec());
-        let scheme = S::new(Self::get_symmetric_key(&self.pvk, &sender_pbk));
-        scheme.decrypt(&ciphertext[32..])
+        let sender_pbk = PublicKey::from_bytes(&ciphertext[..65]);
+        let scheme = S::new(self.get_symmetric_key(&self.pvk, &sender_pbk));
+        scheme.decrypt(&ciphertext[65..])
     }
 
     pub fn borrow_pbk(&self) -> &PublicKey {
         &self.pbk
     }
 
-    fn get_symmetric_key(pvk: &PrivateKey, ephemeral_pbk: &PublicKey) -> Vec<u8> {
-        let pvk_num = u128::from_be_bytes(pvk.to_bytes().try_into().unwrap());
-        let curve = pvk.curve();
-        let res = curve
-            .mul(&ephemeral_pbk.to_point(curve.mont_space()), pvk_num)
-            .to_bytes(curve.mont_space());
-        res
+    fn get_symmetric_key(&self, pvk: &PrivateKey, ephemeral_pbk: &PublicKey) -> Vec<u8> {
+        ephemeral_pbk
+            .key
+            .mul_tweak(&self.secp, &Scalar::from(pvk.key))
+            .unwrap()
+            .serialize_uncompressed()
+            .to_vec()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use rand::rngs::OsRng;
-    use crate::Ecies;
+
     use crate::private_key::PrivateKey;
     use crate::symmetric_encryption::simple::SimpleSE;
+    use crate::Ecies;
 
     #[test]
     fn test_ecies() {

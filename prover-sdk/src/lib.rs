@@ -5,6 +5,7 @@ use aligned_sdk::sdk::{estimate_fee, get_next_nonce, submit_and_wait_verificatio
 use aligned_sp1_prover::AuctionData;
 use anyhow::{anyhow, Result};
 use dialoguer::Confirm;
+use ecies::private_key::PrivateKey;
 use ecies::public_key::PublicKey;
 use ecies::Ecies;
 use ethers::abi::{encode, Token, Uint};
@@ -14,6 +15,7 @@ use ethers::prelude::Signer;
 use ethers::signers::Wallet;
 use ethers::types::{Address, U256};
 use sp1_sdk::{ProverClient, SP1Stdin};
+use ecies::symmetric_encryption::simple::SimpleSE;
 
 pub const ELF: &[u8] = include_bytes!("../../sp1-prover/elf/riscv32im-succinct-zkvm-elf");
 pub const ENCRYPTION_PUBLIC_KEY: &str = include_str!("../../sp1-prover/encryption_key");
@@ -148,12 +150,13 @@ pub async fn get_winner_and_submit_proof(
     Ok((winner_addr, winner_amount, verified_proof))
 }
 
-pub fn encrypt_bidder_amount(amount: &u128, scheme: &Ecies, pbk: &PublicKey) -> Vec<u8> {
-    scheme.encrypt(&mut OsRng, pbk, &amount.to_be_bytes().to_vec())
+pub fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
+    let scheme = Ecies::<SimpleSE>::from_pvk(PrivateKey::from_rng(&mut OsRng));
+    scheme.encrypt(&mut OsRng, pbk, &amount.to_be_bytes())
 }
 
 pub fn get_encryption_key() -> Result<PublicKey> {
-    Ok(PublicKey::from_bytes(hex::decode(ENCRYPTION_PUBLIC_KEY)?))
+    Ok(PublicKey::from_bytes(&hex::decode(ENCRYPTION_PUBLIC_KEY)?))
 }
 
 pub fn flatten(vec: &[[u8; 32]]) -> Vec<u8> {
@@ -171,17 +174,14 @@ mod tests {
     use std::io::Read;
     use std::str::FromStr;
 
+    use crate::{encrypt_bidder_amount, ENCRYPTION_PRIVATE_KEY, ENCRYPTION_PUBLIC_KEY};
     use aligned_sdk::core::types::Network;
-    use ethers::core::rand::rngs::OsRng;
-    use aligned_sp1_prover::{find_winner, AuctionData, Bidder};
+    use aligned_sp1_prover::{AuctionData, Bidder};
+    use ecies::public_key::PublicKey;
     use ethers::prelude::Signer;
     use ethers::signers::LocalWallet;
     use ethers::types::{Bytes, H160};
     use sp1_sdk::{ProverClient, SP1Stdin};
-    use ecies::Ecies;
-    use ecies::private_key::PrivateKey;
-    use ecies::public_key::PublicKey;
-    use crate::{encrypt_bidder_amount, ENCRYPTION_PRIVATE_KEY, ENCRYPTION_PUBLIC_KEY};
 
     #[tokio::test]
     async fn test_submit_proof() {
@@ -191,7 +191,7 @@ mod tests {
         let wallet = LocalWallet::from_str(&env::var("PRIVATE_KEY").unwrap())
             .unwrap()
             .with_chain_id(17000u64);
-        
+
         let (_winner_addr, winner_amount, _verified_proof) =
             super::get_winner_and_submit_proof(wallet, &auction_data(), rpc_url, network, batcher_url)
                 .await
@@ -210,32 +210,32 @@ mod tests {
                 .unwrap();
             buffer
         };
-        
+
         let mut stdin = SP1Stdin::new();
         stdin.write(&auction_data());
         stdin.write(&hex::decode(ENCRYPTION_PRIVATE_KEY).unwrap());
-        
+
         let client = ProverClient::new();
         let (pk, vk) = client.setup(elf.as_slice());
-        
+
         println!("Generating proof...");
-        let Ok(mut proof) = client.prove(&pk, stdin).compressed().run() else {
-            println!("Something went wrong!");
-            return;
+        let mut proof = match client.prove(&pk, stdin).run() {
+            Ok(proof) => proof,
+            Err(e) => panic!("Failed to generate proof: {:?}", e),
         };
         
         println!("Proof generated successfully. Verifying proof...");
         client.verify(&proof, &vk).expect("verification failed");
         println!("Proof verified successfully.");
-        
-        // println!("{:?}", proof.public_values);
-        // let hash_data = proof.public_values.read::<[u8; 32]>();
-        // println!("{:?}", hash_data);
-        // let winner_addr = proof.public_values.read::<Vec<u8>>();
-        // println!("{:?}", winner_addr);
+
+        println!("{:?}", proof.public_values);
+        let hash_data = proof.public_values.read::<[u8; 32]>();
+        println!("{:?}", hash_data);
+        let winner_addr = proof.public_values.read::<Vec<u8>>();
+        println!("{:?}", winner_addr);
         // Todo: validate with data
     }
-    
+
     #[test]
     fn test_type() {
         let x = H160::from_str("0xeDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap();
@@ -250,19 +250,18 @@ mod tests {
         let g = include_bytes!("../pub_input");
         println!("{:?}", g);
     }
-    
-    fn auction_data() -> AuctionData {
-        let pbk = PublicKey::from_bytes(hex::decode(ENCRYPTION_PUBLIC_KEY).unwrap());
 
-        let scheme = Ecies::from_pvk(PrivateKey::from_rng(&mut OsRng));
+    fn auction_data() -> AuctionData {
+        let pbk = PublicKey::from_bytes(&hex::decode(ENCRYPTION_PUBLIC_KEY).unwrap());
+
         AuctionData {
             bidders: vec![
                 Bidder {
-                    encrypted_amount: encrypt_bidder_amount(&3, &scheme, &pbk),
+                    encrypted_amount: encrypt_bidder_amount(&3, &pbk),
                     address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
                 },
                 Bidder {
-                    encrypted_amount: encrypt_bidder_amount(&2, &scheme, &pbk),
+                    encrypted_amount: encrypt_bidder_amount(&2, &pbk),
                     address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
                 },
             ],

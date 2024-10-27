@@ -107,7 +107,7 @@ mod tests {
 
     fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
         let scheme: Ecies = Ecies::from_pvk(PrivateKey::from_rng(&mut OsRng));
-        scheme.encrypt(&mut OsRng, pbk, &amount.to_be_bytes().to_vec())
+        scheme.encrypt(&mut OsRng, pbk, &amount.to_be_bytes())
     }
 
     pub fn get_key() -> (PrivateKey, PublicKey) {

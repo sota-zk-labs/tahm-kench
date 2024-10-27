@@ -1,5 +1,4 @@
 use crate::ecc::point::Point;
-use crate::public_key::PublicKey;
 use crate::utils::math::{Montgomery, MontgomerySpace};
 // curve: y^2 = x^3 + ax + b
 pub struct Ecc {
@@ -144,11 +143,11 @@ impl Ecc {
         p.to_norm(&self.mont_space)
     }
 
-    pub fn get_public_key(&self, private_key: Vec<u8>) -> PublicKey {
-        let key_num = u128::from_be_bytes(private_key.try_into().unwrap());
-        let (x, y) = self.norm_point(&self.mul(&self.g, key_num));
-        PublicKey::from_point(x, y)
-    }
+    // pub fn get_public_key(&self, private_key: Vec<u8>) -> PublicKey {
+    //     let key_num = u128::from_be_bytes(private_key.try_into().unwrap());
+    //     let (x, y) = self.norm_point(&self.mul(&self.g, key_num));
+    //     PublicKey::from_point(x, y)
+    // }
 
     pub fn generator(&self) -> Point {
         self.g.clone()

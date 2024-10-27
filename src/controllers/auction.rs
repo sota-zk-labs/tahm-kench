@@ -1,10 +1,7 @@
 use aligned_sdk::core::types::Network;
 use aligned_sp1_prover::{AuctionData, Bidder};
 use anyhow::{Context, Result};
-use ecies::private_key::PrivateKey;
-use ecies::{Ecies};
 use ethers::core::k256::ecdsa::SigningKey;
-use ethers::core::rand::rngs::OsRng;
 use ethers::middleware::SignerMiddleware;
 use ethers::prelude::*;
 use ethers::prelude::{Http, LocalWallet, Provider};
@@ -101,11 +98,10 @@ pub async fn create_bid(
     println!("3");
     let _ = approve_tx.await?.unwrap();
 
-    let encryption_key = PublicKey::from_bytes(auction.encryption_key.to_vec());
+    let encryption_key = PublicKey::from_bytes(auction.encryption_key.to_vec().as_slice());
     // Fake encrypted price
     let encrypted_price = encrypt_bidder_amount(
         &bid_price,
-        &Ecies::from_pvk(PrivateKey::from_rng(&mut OsRng)),
         &encryption_key,
     );
 
