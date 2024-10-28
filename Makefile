@@ -29,7 +29,7 @@ deposit-to-aligned:
     --rpc_url https://ethereum-holesky-rpc.publicnode.com \
     --network holesky \
     --keystore_path $(KEYSTORE_PATH) \
-    --amount 0.004ether
+    --amount $(AMOUNT)ether
 
 test-prove:
 	cd sp1-prover && make gen-key && make elf-commit
