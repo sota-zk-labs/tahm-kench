@@ -150,8 +150,7 @@ pub async fn get_winner_and_submit_proof(
         Token::Uint(Uint::from(index_in_batch)),
     ]);
 
-    fs::write("verified_proof", &verified_proof)
-        .expect("Failed to write verified proof to file");
+    fs::write("verified_proof", &verified_proof).expect("Failed to write verified proof to file");
 
     Ok((winner_addr, winner_amount, verified_proof))
 }
@@ -177,8 +176,8 @@ pub fn flatten(vec: &[[u8; 32]]) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
     use std::env;
+    use std::str::FromStr;
 
     use aligned_sdk::core::types::Network;
     use aligned_sp1_prover::{AuctionData, Bidder};

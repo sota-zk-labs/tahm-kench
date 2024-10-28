@@ -34,7 +34,6 @@ pub fn calc_auction_hash(auction_data: &AuctionData) -> [u8; 32] {
         input.extend(&bidder.address);
         input.extend(&bidder.encrypted_amount);
         println!("{:?}", bidder.encrypted_amount);
-
     }
 
     let mut output = [0u8; 32];
@@ -135,7 +134,7 @@ mod tests {
     fn test_hash_auction() {
         let (_, pbk) = get_key();
         let data = auction_data(&pbk);
-        println!("{:?}",data);
+        println!("{:?}", data);
         // println!("{:?}", hex::encode(&data.bidders[0].address));
         // println!("{:?}", hex::encode(&data.bidders[1].encrypted_amount));
         println!("{:?}", hex::encode(calc_auction_hash(&data)));

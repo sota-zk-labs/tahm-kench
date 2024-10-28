@@ -11,7 +11,7 @@ use home::home_dir;
 use prover_sdk::get_encryption_key;
 use zk_auction::config::Config;
 use zk_auction::controllers::auction::{
-    create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, set_up, withdraw,
+    create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
 };
 
 #[derive(Parser, Debug)]
@@ -130,11 +130,11 @@ async fn main() -> Result<()> {
                     description,
                     nft_contract_address,
                     U256::from(token_id),
-                    target_price,
+                    U256::from(target_price),
                     U256::from(time),
                 )
                 .await
-                .expect("Failed to create auction");
+                .unwrap_or_else(|_| panic!("Failed to create auction"));
                 Ok(())
             }
             Commands::GetAuction { auction_id } => {
@@ -146,7 +146,7 @@ async fn main() -> Result<()> {
             Commands::ListAuctions => {
                 get_total_auction(signer, config.contract_address)
                     .await
-                    .expect("Failed to get total auction");
+                    .unwrap_or_else(|_| panic!("Failed to get total auction"));
                 Ok(())
             }
             Commands::Bid { price, auction_id } => {

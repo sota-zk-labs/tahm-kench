@@ -14,3 +14,6 @@ anyhow = { workspace = true }
 tokio = { workspace = true }
 ecies = { workspace = true }
 dialoguer = { workspace = true }
+
+[patch.crates-io]
+axum = "=0.7.4"

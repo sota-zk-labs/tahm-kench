@@ -23,18 +23,20 @@ pub async fn create_new_auction(
     description: String,
     nft_contract_address: Address,
     token_id: U256,
-    target_price: u128,
+    target_price: U256,
     duration: U256,
 ) -> Result<()> {
     // Approve NFT
     let erc721_contract = nftContract::new(nft_contract_address, signer.clone().into());
     let erc721_contract_caller = erc721_contract.approve(auction_contract_address, token_id);
     let approve_tx = erc721_contract_caller.send().await?;
-    let _ = approve_tx.await?.unwrap();
-    println!("approve success");
+    let approve_receipt = approve_tx.await?.unwrap();
+    println!(
+        "Approve nft id {} successfully with transaction_hash : {:?}",
+        token_id, approve_receipt.transaction_hash
+    );
     // Create Auction
     let zk_auction_contract = zkAuctionContract::new(auction_contract_address, signer.into());
-    println!("1");
     let contract_caller = zk_auction_contract.create_auction(
         Bytes::from(pbk_encryption.serialize()),
         nft_contract_address,
@@ -44,11 +46,8 @@ pub async fn create_new_auction(
         target_price,
         duration,
     );
-    println!("2");
     let tx = contract_caller.send().await?;
-    println!("3");
     let receipt = tx.await?.unwrap();
-    println!("4");
     let tx_hash = receipt.transaction_hash;
     println!(
         "Create auction successfully with transaction_hash : {:?}",
@@ -88,33 +87,27 @@ pub async fn create_bid(
 ) -> Result<()> {
     let auction = get_auction(signer.clone(), auction_contract_address, auction_id).await?;
     // Approve token
-    println!("1");
     let erc20_contract = erc20Contract::new(token_address, signer.clone().into());
 
     let erc20_contract_caller =
-        erc20_contract.approve(auction_contract_address, auction.asset.token_id);
-    println!("2");
+        erc20_contract.approve(auction_contract_address, auction.deposit_price);
     let approve_tx = erc20_contract_caller.send().await?;
-    println!("3");
-    let _ = approve_tx.await?.unwrap();
+    let approve_receipt = approve_tx.await?.unwrap();
+    println!(
+        "Approve {} token to auction id {} successfully with transaction_hash : {:?}",
+        auction.deposit_price, auction_id, approve_receipt.transaction_hash
+    );
 
-    assert!(auction.deposit_price >= bid_price, "App lozzz");
-
-    println!("4");
     let encryption_key = PublicKey::parse((*auction.encryption_key.to_vec()).try_into()?)
         .expect("Wrong on-chain encryption key");
-    // Fake encrypted price
+    // encrypted price
     let encrypted_price = encrypt_bidder_amount(&bid_price, &encryption_key);
 
     // Create bid
-    println!("5");
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
     let contract_caller = contract.place_bid(auction_id, Bytes::from(encrypted_price));
-
     let tx = contract_caller.send().await?;
-    println!("6");
     let receipt = tx.await?.unwrap();
-    println!("7");
     let tx_hash = receipt.transaction_hash;
     println!(
         "Create bid successfully with transaction_hash : {:?}",
