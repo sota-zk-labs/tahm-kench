@@ -1,11 +1,24 @@
+use curve25519_dalek::edwards::CompressedEdwardsY;
+use curve25519_dalek::EdwardsPoint;
+
 pub struct PublicKey {
-    pub key: secp256k1::PublicKey
+    key: EdwardsPoint,
+    bytes: [u8; 32]
 }
 
 impl PublicKey {
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+    pub const SIZE_IN_BYTES: usize = 32;
+    pub fn from_bytes(bytes: [u8; 32]) -> Self {
         Self {
-            key: secp256k1::PublicKey::from_slice(bytes).unwrap()
+            key: CompressedEdwardsY(bytes).decompress().unwrap(),
+            bytes
+        }
+    }
+    
+    pub fn from_point(point: EdwardsPoint) -> Self {
+        Self {
+            key: point,
+            bytes: point.compress().0,
         }
     }
 
@@ -15,11 +28,11 @@ impl PublicKey {
     //     Self { key, px, py }
     // }
 
-    pub fn to_bytes(&self) -> [u8; 65] {
-        self.key.serialize_uncompressed()
+    pub fn to_bytes(&self) -> &[u8; 32] {
+        &self.bytes
     }
-
-    // pub fn to_point(&self, space: &MontgomerySpace) -> Point {
-    //     Point::new(space.new_mont(&self.px), space.new_mont(&self.py))
-    // }
+        
+    pub fn point(&self) -> &EdwardsPoint {
+        &self.key
+    }
 }

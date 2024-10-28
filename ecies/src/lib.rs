@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 
 use rand::Rng;
-use secp256k1::{All, Scalar, Secp256k1};
 
 use crate::private_key::PrivateKey;
 use crate::public_key::PublicKey;
@@ -18,7 +17,6 @@ pub mod utils;
 pub struct Ecies<S: SymmetricEncryptionScheme = SimpleSE> {
     pvk: PrivateKey,
     pbk: PublicKey,
-    secp: Secp256k1<All>,
     phantom_data: PhantomData<S>,
 }
 
@@ -28,7 +26,6 @@ impl<S: SymmetricEncryptionScheme> Ecies<S> {
         Ecies {
             pvk,
             pbk,
-            secp: Secp256k1::new(),
             phantom_data: PhantomData,
         }
     }
@@ -41,9 +38,9 @@ impl<S: SymmetricEncryptionScheme> Ecies<S> {
     }
 
     pub fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
-        let sender_pbk = PublicKey::from_bytes(&ciphertext[..65]);
+        let sender_pbk = PublicKey::from_bytes(ciphertext[..PublicKey::SIZE_IN_BYTES].to_vec().try_into().unwrap());
         let scheme = S::new(self.get_symmetric_key(&self.pvk, &sender_pbk));
-        scheme.decrypt(&ciphertext[65..])
+        scheme.decrypt(&ciphertext[PublicKey::SIZE_IN_BYTES..])
     }
 
     pub fn borrow_pbk(&self) -> &PublicKey {
@@ -51,12 +48,7 @@ impl<S: SymmetricEncryptionScheme> Ecies<S> {
     }
 
     fn get_symmetric_key(&self, pvk: &PrivateKey, ephemeral_pbk: &PublicKey) -> Vec<u8> {
-        ephemeral_pbk
-            .key
-            .mul_tweak(&self.secp, &Scalar::from(pvk.key))
-            .unwrap()
-            .serialize_uncompressed()
-            .to_vec()
+        (pvk.scalar() * ephemeral_pbk.point()).compress().0.to_vec()
     }
 }
 
