@@ -44,7 +44,7 @@ enum Commands {
         token_id: u128,
         #[arg(short, long)]
         target_price: u128,
-        #[arg(short, long, default_value = "3600")]
+        #[arg(short, long, default_value = "100")]
         time: u128,
     },
     /// Get detail auctions
