@@ -13,7 +13,7 @@ contract ZkAuction is IERC721Receiver {
 
     // data for verifying batch inclusion
     error InvalidElf(bytes32 submittedElf);
-    bytes32 public constant ELF_COMMITMENT = 0x2d3d27d6ced831878d074bc67f50a804798145815c83d10a51d282400bc2a844;
+    bytes32 public constant ELF_COMMITMENT = 0x7c10ecda2f867d4fef5077830efd2123b0d06a66de974699994861b12785c4f2;
     address public constant ALIGNED_SERVICE_MANAGER = 0x58F280BeBE9B34c9939C3C39e0890C81f163B623;
     address public constant ALIGNED_PAYMENT_SERVICE_ADDR = 0x815aeCA64a974297942D2Bbf034ABEe22a38A003;
 
@@ -23,7 +23,7 @@ contract ZkAuction is IERC721Receiver {
         Asset asset; // Asset being auctioned
         Bid[] bids; // Array of bids placed on the auction
         Winner winner; // Winner of the auction
-        uint128 depositPrice; // Deposit price when bidder start bid
+        uint256 depositPrice; // Deposit price when bidder start bid
         uint256 endTime; // Time when the bid phase end
         bool ended; // Status of the auction
     }
@@ -81,7 +81,7 @@ contract ZkAuction is IERC721Receiver {
         uint256 _tokenId,
         string memory _assetName,
         string memory _assetDescription,
-        uint128 _depositPrice,
+        uint256 _depositPrice,
         uint256 _duration
     ) public {
         require(_depositPrice > 0, "Deposit price must be greater than zero");
@@ -92,6 +92,7 @@ contract ZkAuction is IERC721Receiver {
         require(nftContract.getApproved(_tokenId) == address(this), "You need approve the NFT to contract");
 
         // Create auction
+        auctionCount++;
         Auction storage newAuction = auctions[auctionCount];
 
         newAuction.owner = msg.sender;
@@ -101,7 +102,6 @@ contract ZkAuction is IERC721Receiver {
         newAuction.endTime = block.timestamp + _duration; // Set auction end time
         newAuction.ended = false;
 
-        auctionCount++;
         auctionsByOwner[msg.sender].push(newAuction);
 
         // Deposit nft
