@@ -64,7 +64,7 @@ pub async fn get_auction(
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
     let auction = contract.auctions(auction_id).call().await?;
     let auction_entity = AuctionEntity::from(auction);
-    let _ = auction_entity.print_info();
+    auction_entity.print_info();
     Ok(auction_entity)
 }
 

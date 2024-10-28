@@ -12,8 +12,8 @@ contract ZkAuction is IERC721Receiver {
     IERC20 public immutable lockToken; // The token to be locked
 
     // data for verifying batch inclusion
-    bytes32 public constant ELF_COMMITMENT = 0xb3a059d3db56b7310f74575a285f591d32d2c32990bf6eff883a71e90c86230a;
     error InvalidElf(bytes32 submittedElf);
+    bytes32 public constant ELF_COMMITMENT = 0x2d3d27d6ced831878d074bc67f50a804798145815c83d10a51d282400bc2a844;
     address public constant ALIGNED_SERVICE_MANAGER = 0x58F280BeBE9B34c9939C3C39e0890C81f163B623;
     address public constant ALIGNED_PAYMENT_SERVICE_ADDR = 0x815aeCA64a974297942D2Bbf034ABEe22a38A003;
 
@@ -204,10 +204,7 @@ contract ZkAuction is IERC721Receiver {
             "Invalid public input"
         );
 
-        (bytes32 auctionHash, address winner_addr, uint128 winner_price) = abi.decode(
-            publicInput,
-            (bytes32, address, uint128)
-        );
+        (bytes32 auctionHash, address winner_addr, uint128 winner_price) = decodePublicInput(publicInput);
 
         require(winner_addr == winner.winner, "Winner in proof does not match");
         require(winner_price == winner.price, "Winner in proof does not match");
@@ -243,6 +240,31 @@ contract ZkAuction is IERC721Receiver {
             hashInput = abi.encodePacked(hashInput, bids[i].bidder, bids[i].encryptedPrice);
         }
         return keccak256(hashInput);
+    }
+
+    function decodePublicInput(bytes memory data) internal pure returns (bytes32 auctionHash, address winner_addr, uint128 winner_price) {
+        auctionHash = bytes32(slice(data, 0, 32));
+        winner_addr = address(bytes20(slice(data, 32 + 8, 20)));
+        winner_price = uint128(bytes16(reverse(slice(data, 32 + 8 + 20, 16))));
+    }
+
+    function slice(bytes memory data, uint256 start, uint256 length) internal pure returns (bytes memory) {
+        require(start + length <= data.length, "Slice out of bounds");
+
+        bytes memory result = new bytes(length);
+        for (uint256 i = 0; i < length; i++) {
+            result[i] = data[start + i];
+        }
+
+        return result;
+    }
+
+    function reverse(bytes memory data) public pure returns (bytes memory) {
+        bytes memory result = new bytes(data.length);
+        for (uint256 i = 0; i < data.length; i++) {
+            result[i] = data[data.length - 1 - i];
+        }
+        return result;
     }
 
     function onERC721Received(

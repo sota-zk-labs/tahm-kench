@@ -105,7 +105,7 @@ async fn main() -> Result<()> {
         .expect("Failed to decrypt keystore")
         .with_chain_id(chain_id.as_u64());
 
-    let encryption_key = get_encryption_key().unwrap();
+    let encryption_key = get_encryption_key()?;
     let signer = SignerMiddleware::new(provider.clone(), wallet.clone());
 
     match args.command {

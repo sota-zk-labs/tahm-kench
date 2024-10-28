@@ -15,6 +15,7 @@ use sp1_sdk::{ProverClient, SP1Stdin};
 
 pub const ELF: &[u8] = include_bytes!("../../sp1-prover/elf/riscv32im-succinct-zkvm-elf");
 pub const ENCRYPTION_PUBLIC_KEY: &str = include_str!("../../sp1-prover/encryption_key");
+pub const ENCRYPTION_PRIVATE_KEY: &str = include_str!("../../sp1-prover/private_encryption_key");
 
 /// Return winner and proof for the function `revealWinner` in the contract
 pub async fn get_winner_and_submit_proof(
@@ -26,6 +27,7 @@ pub async fn get_winner_and_submit_proof(
 ) -> Result<(Address, u128, Vec<u8>)> {
     let mut stdin = SP1Stdin::new();
     stdin.write(auction_data);
+    stdin.write(&hex::decode(ENCRYPTION_PRIVATE_KEY)?);
 
     let client = ProverClient::new();
     let (pk, vk) = client.setup(ELF);
@@ -37,7 +39,7 @@ pub async fn get_winner_and_submit_proof(
     client.verify(&proof, &vk)?;
 
     let pub_input = proof.public_values.to_vec();
-    let hash_data = proof.public_values.read::<[u8; 32]>().to_vec(); // hash(auctionData)
+    let _hash_data = proof.public_values.read::<[u8; 32]>().to_vec(); // hash(auctionData)
     let winner_addr = Address::from_slice(proof.public_values.read::<Vec<u8>>().as_slice()); // winner address
     let winner_amount = proof.public_values.read::<u128>(); // winner amount
 
@@ -45,7 +47,7 @@ pub async fn get_winner_and_submit_proof(
 
     // let proof = include_bytes!("../proof").to_vec();
     // let pub_input = include_bytes!("../pub_input").to_vec();
-    // println!("{:?}", pub_input);
+    // println!("{:?}", hex::encode(&pub_input));
     // let winner_addr = vec![1u8];
     // let winner_amount = 0; // winner amount
     // // dbg!(proof.len());
@@ -65,7 +67,7 @@ pub async fn get_winner_and_submit_proof(
         proof_generator_addr: wallet.address(),
         vm_program_code: Some(ELF.to_vec()),
         verification_key: None,
-        pub_input: Some(pub_input),
+        pub_input: Some(pub_input.clone()),
     };
     let max_fee = estimate_fee(rpc_url, PriceEstimate::Instant)
         .await
@@ -116,11 +118,7 @@ pub async fn get_winner_and_submit_proof(
     );
 
     let verified_proof = encode(&[
-        Token::Bytes(encode(&[
-            Token::FixedBytes(hash_data),
-            Token::Address(Address::from(winner_addr)),
-            Token::Uint(Uint::from(winner_amount)),
-        ])),
+        Token::Bytes(pub_input),
         Token::FixedBytes(
             aligned_verification_data
                 .verification_data_commitment
@@ -150,7 +148,8 @@ pub async fn get_winner_and_submit_proof(
         Token::Uint(Uint::from(index_in_batch)),
     ]);
 
-    fs::write("verified_proof", &verified_proof).expect("Failed to write verified proof to file");
+    fs::write("verified_proof", &verified_proof)
+        .expect("Failed to write verified proof to file");
 
     Ok((winner_addr, winner_amount, verified_proof))
 }
@@ -176,8 +175,8 @@ pub fn flatten(vec: &[[u8; 32]]) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
     use std::str::FromStr;
+    use std::env;
 
     use aligned_sdk::core::types::Network;
     use aligned_sp1_prover::{AuctionData, Bidder};

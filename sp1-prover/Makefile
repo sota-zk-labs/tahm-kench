@@ -8,4 +8,4 @@ gen-key:
 
 elf-commit:
 	cargo prove build
-	aligned get-vk-commitment --verification_key_file elf/riscv32im-succinct-zkvm-elf --proving_system SP1
+	aligned get-vk-commitment --verification_key_file elf/riscv32im-succinct-zkvm-elf --proving_system SP1 --output elf/elf_commitment
