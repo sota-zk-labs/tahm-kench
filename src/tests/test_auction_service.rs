@@ -57,7 +57,7 @@ async fn test_auction_service(){
     let new_token_id = auction_total + 1;
     println!("new_token_id: {}", new_token_id);
     let hduoc_addres = Address::from_str("0xeDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap();
-    let _ = set_up_nft(signer.clone(), hduoc_addres, nft_contract_address, new_token_id).awit;
+    let _ = set_up_nft(signer.clone(), hduoc_addres, nft_contract_address, new_token_id).await;
     // let _ = set_up_nft(signer.clone(), wallet_address.clone(), nft_contract_address, new_token_id).await;
 
 
