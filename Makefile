@@ -21,7 +21,7 @@ test-auction:
 	/home/ubuntu/.cargo/bin/cargo test --color=always --message-format=json-diagnostic-rendered-ansi --no-run --package zk_auction --lib tests::test_auction_service::test_auction_service
 
 test-submit-proof:
-	cd sp1-prover && make gen-key && make elf-commit
+	cd sp1-prover && make elf-commit
 	RUST_BACKTRACE=1 cargo test --release --color=always --lib tests::test_submit_proof --no-fail-fast --manifest-path prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture
 
 deposit-to-aligned:

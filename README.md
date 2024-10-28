@@ -6,43 +6,50 @@
 
 ## Introduction
 
-**Tahm-Kench** is a [**Sealed-Bid Auction**](https://www.investopedia.com/terms/s/sealed-bid-auction.asp) platform built using the
-**Plonky3** toolkit. The project aims to facilitate secure and private auctions by leveraging **zero-knowledge proofs (ZKPs)** to
-determine the highest bidder without revealing individual bid amounts. This ensures both privacy and fairness in the bidding process.
+**Tahm-Kench** is a **Sealed-Bid Auction** platform built on **SP1 zkVM**,
+using [Aligned layer](https://alignedlayer.com/) to verify the proof. Its main objective is to enable secure and private auctions by using **zero-knowledge proof (ZKP)** to select the winning bidder without
+revealing any details about individual bids. This ensures complete confidentiality for bidders while maintaining
+fairness in determining the highest bid.
 
-Additionally, **Tahm-Kench** serves as a **reference model** for developers interested in building decentralized applications (dApps)
-using **Plonky3** and **ZKPs**.
+We are excited about this project because it applies **zero-knowledge** techniques to real-world challenges, where
+privacy, transparency and security are crucial. This platform addresses the challenge of maintaining participant
+confidentiality while ensuring a fair outcome in sealed-bid auctions. The potential applications are vast, from
+government contracts and corporate procurement to high-value asset auctions, where secure and anonymous bidding is
+essential.
 
-## Requirements
+Beyond its practical use, this project also serves as a **reference model** for developers interested in building
+ZK-based decentralized applications using **SP1 zkVM** and **Aligned layer**. It demonstrates how zero-knowledge technology can enhance privacy
+in competitive bidding scenarios and lays a foundation for future projects in the ZK space.
+
+## Instructions
+
+### Requirements
 
 1. [Rust](https://www.rust-lang.org/tools/install)
 2. [Foundry](https://getfoundry.sh)
+3. [Aligned CLI](https://docs.alignedlayer.com/introduction/1_try_aligned)
+4. [SP1](https://docs.succinct.xyz/getting-started/install.html)
 
-## Usage
+### Setup
 
-## Usage
-
-### 1 - Create Keystore
-
-You can use cast to create a local keystore.
+First, you need to create a local keystore using the `cast` tool.
 If you already have one you can skip this step.
 
 ```bash
-cast wallet new-mnemonic
+cast wallet import --private-key <YOUR_PRIVATE_KEY>
 ```
 
-Then you can import your created keystore using:
-
+Then, clone our repository:
 ```bash
-cast wallet import --interactive <path_to_keystore.json>
+# clone the repository
+git clone https://github.com/sota-zk-labs/tahm-kench
+cd tahm-kench
 ```
-
-Then you need to obtain some funds to pay for gas and proof verification.
-You can do this by using this [faucet](https://cloud.google.com/application/web3/faucet/ethereum/holesky)
 
 ### 2 - Run Cli Tools
 
 To use **Tahm-Kench**, you need run:
+
 ```bash
 make make start-cli KEYSTORE_PATH=<path_to_keystore.json>
 ```

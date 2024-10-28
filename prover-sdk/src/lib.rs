@@ -1,21 +1,21 @@
+extern crate core;
+
 use std::fs;
+use std::fs::File;
+use std::io::Read;
 
 use aligned_sdk::core::types::{Network, PriceEstimate, ProvingSystemId, VerificationData};
 use aligned_sdk::sdk::{estimate_fee, get_next_nonce, submit_and_wait_verification};
 use aligned_sp1_prover::AuctionData;
 use anyhow::{anyhow, Result};
 use dialoguer::Confirm;
-use ecies::PublicKey;
+use ecies::{PublicKey, SecretKey};
 use ethers::abi::{encode, Token, Uint};
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::Signer;
 use ethers::signers::Wallet;
 use ethers::types::{Address, U256};
 use sp1_sdk::{ProverClient, SP1Stdin};
-
-pub const ELF: &[u8] = include_bytes!("../../sp1-prover/elf/riscv32im-succinct-zkvm-elf");
-pub const ENCRYPTION_PUBLIC_KEY: &str = include_str!("../../sp1-prover/encryption_key");
-pub const ENCRYPTION_PRIVATE_KEY: &str = include_str!("../../sp1-prover/private_encryption_key");
 
 /// Return winner and proof for the function `revealWinner` in the contract
 pub async fn get_winner_and_submit_proof(
@@ -27,11 +27,10 @@ pub async fn get_winner_and_submit_proof(
 ) -> Result<(Address, u128, Vec<u8>)> {
     let mut stdin = SP1Stdin::new();
     stdin.write(auction_data);
-    stdin.write(&hex::decode(ENCRYPTION_PRIVATE_KEY)?);
-    println!("ok");
+    stdin.write(&get_private_encryption_key()?.serialize().to_vec());
+
     let client = ProverClient::new();
-    println!("ok1");
-    let (pk, vk) = client.setup(ELF);
+    let (pk, vk) = client.setup(get_elf()?.as_slice());
 
     println!("Creating proof...");
     let mut proof = client.prove(&pk, stdin).compressed().run()?;
@@ -66,7 +65,7 @@ pub async fn get_winner_and_submit_proof(
         proving_system: ProvingSystemId::SP1,
         proof,
         proof_generator_addr: wallet.address(),
-        vm_program_code: Some(ELF.to_vec()),
+        vm_program_code: Some(get_elf()?),
         verification_key: None,
         pub_input: Some(pub_input.clone()),
     };
@@ -159,10 +158,25 @@ pub fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
 }
 
 pub fn get_encryption_key() -> Result<PublicKey> {
-    Ok(
-        PublicKey::parse((*hex::decode(ENCRYPTION_PUBLIC_KEY).unwrap()).try_into()?)
-            .expect("parsing encryption public key failed"),
+    Ok(PublicKey::parse(
+        &hex::decode(fs::read_to_string("../sp1-prover/encryption_key")?)?
+            .try_into()
+            .unwrap(),
     )
+    .expect("parsing public encryption key failed"))
+}
+
+pub fn get_private_encryption_key() -> Result<SecretKey> {
+    Ok(SecretKey::parse_slice(&hex::decode(fs::read_to_string(
+        "../sp1-prover/private_encryption_key",
+    )?)?)
+    .expect("parsing private encryption key failed"))
+}
+
+pub fn get_elf() -> Result<Vec<u8>> {
+    let mut buffer = Vec::new();
+    File::open("../sp1-prover/elf/riscv32im-succinct-zkvm-elf")?.read_to_end(&mut buffer)?;
+    Ok(buffer)
 }
 
 pub fn flatten(vec: &[[u8; 32]]) -> Vec<u8> {
@@ -173,6 +187,8 @@ pub fn flatten(vec: &[[u8; 32]]) -> Vec<u8> {
     res
 }
 
+fn read_file() {}
+
 #[cfg(test)]
 mod tests {
     use std::env;
@@ -182,13 +198,12 @@ mod tests {
 
     use aligned_sdk::core::types::Network;
     use aligned_sp1_prover::{AuctionData, Bidder};
-    use ecies::PublicKey;
     use ethers::prelude::Signer;
     use ethers::signers::LocalWallet;
     use ethers::types::{Bytes, H160};
     use sp1_sdk::{ProverClient, SP1Stdin};
 
-    use crate::{encrypt_bidder_amount, ENCRYPTION_PRIVATE_KEY, ENCRYPTION_PUBLIC_KEY};
+    use crate::{encrypt_bidder_amount, get_encryption_key, get_private_encryption_key};
 
     #[tokio::test]
     async fn test_submit_proof() {
@@ -199,10 +214,15 @@ mod tests {
             .unwrap()
             .with_chain_id(17000u64);
 
-        let (_winner_addr, winner_amount, _verified_proof) =
-            super::get_winner_and_submit_proof(wallet, &auction_data(), rpc_url, network, batcher_url)
-                .await
-                .unwrap();
+        let (_winner_addr, winner_amount, _verified_proof) = super::get_winner_and_submit_proof(
+            wallet,
+            &auction_data(),
+            rpc_url,
+            network,
+            batcher_url,
+        )
+        .await
+        .unwrap();
         dbg!(winner_amount);
     }
 
@@ -220,7 +240,9 @@ mod tests {
 
         let mut stdin = SP1Stdin::new();
         stdin.write(&auction_data());
-        stdin.write(&hex::decode(ENCRYPTION_PRIVATE_KEY).unwrap());
+        stdin.write(
+            &hex::decode(get_private_encryption_key().unwrap().serialize().as_slice()).unwrap(),
+        );
 
         let client = ProverClient::new();
         let (pk, vk) = client.setup(elf.as_slice());
@@ -259,13 +281,7 @@ mod tests {
     }
 
     fn auction_data() -> AuctionData {
-        let pbk = PublicKey::parse(
-            &hex::decode(ENCRYPTION_PUBLIC_KEY)
-                .unwrap()
-                .try_into()
-                .unwrap(),
-        )
-        .unwrap();
+        let pbk = get_encryption_key().unwrap();
 
         AuctionData {
             bidders: vec![
