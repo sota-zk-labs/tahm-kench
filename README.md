@@ -6,24 +6,89 @@
 
 ## Introduction
 
-**Tahm-Kench** is a **Sealed-Bid Auction** platform built on **SP1 zkVM**,
-using [Aligned layer](https://alignedlayer.com/) to verify the proof. Its main objective is to enable secure and private auctions by using **zero-knowledge proof (ZKP)** to select the winning bidder without
-revealing any details about individual bids. This ensures complete confidentiality for bidders while maintaining
-fairness in determining the highest bid.
+**Tahm-Kench** is a [**Sealed-Bid Auction**](https://www.investopedia.com/terms/s/sealed-bid-auction.asp) platform built
+using **SP1 zkVM** and **Aligned**. The project aims to facilitate secure and private auctions by leveraging
+**zero-knowledge proofs (ZKPs)** to determine the highest bidder without revealing individual bid amounts. This ensures
+both privacy and fairness in the bidding process.
 
-We are excited about this project because it applies **zero-knowledge** techniques to real-world challenges, where
-privacy, transparency and security are crucial. This platform addresses the challenge of maintaining participant
-confidentiality while ensuring a fair outcome in sealed-bid auctions. The potential applications are vast, from
-government contracts and corporate procurement to high-value asset auctions, where secure and anonymous bidding is
-essential.
+Additionally, **Tahm-Kench** serves as a **reference model** for developers interested in building decentralized
+applications (dApps) using **Aligned** and **ZKPs**.
 
-Beyond its practical use, this project also serves as a **reference model** for developers interested in building
-ZK-based decentralized applications using **SP1 zkVM** and **Aligned layer**. It demonstrates how zero-knowledge technology can enhance privacy
-in competitive bidding scenarios and lays a foundation for future projects in the ZK space.
+## Team members :busts_in_silhouette:
+
+## Overview
+
+### Core idea
+
+Bidders submit encrypted bids to a smart contract, which only the auction owner can decrypt using their secret key. At
+the conclusion
+of the auction, the owner publishes the winner. **ZKPs** ensure that the auction owner reads all bids and selects the
+highest one
+without revealing their private key or any bid details.
+
+Key components of the project include:
+
+- **Proving Service**: Powered by **SP1**, this service generates a **zero-knowledge proof** from the execution trace of
+  a program that decrypts bids and computes the winner, while preserving the confidentiality of individual bid amounts
+  and the owner's private key.
+- **Smart Contract**: The smart contract verifies the ZK proof and manages the entire auction lifecycle, including
+  setup, bidding, and settlement.
+
+### Technology Stack
+
+- **Smart Contract**: Solidity
+- **Circuit**: Rust, SP1
+- **Encryption scheme**: secp256k1, AES-256-GCM, HKDF-SHA256
+- **Verifier**: Aligned layer
+
+### Workflow
+
+The core logic of **SilentBid** operates on-chain, while off-chain processes handle the winner calculation and proof
+generation. The auction process follows four main phases:
+
+1. **Initial Setup**: The auction owner creates the auction, sets the required deposit amount, transfers assets to the
+   smart contract,
+   and defines the auction's start and end times.
+2. **Bid Phase**: Bidders submit their bids to the smart contract by depositing the required amount.
+3. **Open Phase**: After the bidding window closes, the auction owner calculates the winner and generates a
+   zero-knowledge proof.
+4. **Verify Phase**: The owner submits the winner and the proof to the smart contract for verification, concluding the
+   auction.
+
+**Sequence diagrams for each module are shown below:**
+
+#### Auction Flow:
+
+![auction_flow](diagram/auction_flow.png)
+
+#### Prover & Verifier Flow:
+
+![prover_verifier_flow](diagram/prover_verifier_flow.png)
+
+### Challenges
+
+We used the [ecies](https://crates.io/crates/ecies) crate to encrypt and decrypt bids. However, the proving time and
+proof size were substantial: it took **6 minutes** to generate a proof for **2 bids**, resulting in a **21MB** proof
+size on a system with **64GB RAM** and an **i5-13500 CPU**. This large proof size couldn't be submitted to the Aligned
+layer, so we compressed it, which further increased the proving time.
+
+To address this, we rebuilt the encryption scheme using SP1's patched `secp256k1` crate. This reduced the proving time
+by **half** and compressed the proof size to **1.5MB**. However, the proof couldn't be verified by SP1 due to the
+error `Core(Invalid shard proof: Out-of-domain evaluation mismatch on chip CPU)`. You can review the code in
+the [feat/ecies](https://github.com/sota-zk-labs/tahm-kench/tree/feat/ecies) branch.
+
+### Future Plans
+
+SP1's performance limitations have led us to plan a custom circuit for the encryption scheme using `Gnark` to optimize
+proving time and proof size. Following this development, we aim to introduce additional auction types, such as **Unique
+Lowest Bid Auctions** and **Dutch Auctions**. We also plan to explore collaborations with other **dApps**, including
+**DeFi platforms**, to facilitate automatic asset management based on auction outcomes.
 
 ## Instructions
 
 ### Requirements
+
+Ensure you have the following installed:
 
 1. [Rust](https://www.rust-lang.org/tools/install)
 2. [Foundry](https://getfoundry.sh)
@@ -32,24 +97,50 @@ in competitive bidding scenarios and lays a foundation for future projects in th
 
 ### Setup
 
-First, you need to create a local keystore using the `cast` tool.
-If you already have one you can skip this step.
+1. **Create a Local Keystore**
+
+First, create a local keystore using the `cast` tool. If you already have one, you can skip this step.
 
 ```bash
-cast wallet import --private-key <YOUR_PRIVATE_KEY>
+cast wallet import --private-key <YOUR_PRIVATE_KEY> <WALLET_NAME>
 ```
 
-Then, clone our repository:
+2. **Clone the Repository**
+
+Clone our repository and navigate to the project directory:
+
 ```bash
-# clone the repository
 git clone https://github.com/sota-zk-labs/tahm-kench
 cd tahm-kench
 ```
 
-### 2 - Run Cli Tools
+3. **Run Commands as the Owner (if applicable)**
 
-To use **Tahm-Kench**, you need run:
+If you are the owner, execute the following commands:
 
 ```bash
-make make start-cli KEYSTORE_PATH=<path_to_keystore.json>
+# Deposit $AMOUNT ETH to Aligned layer
+make deposit-to-aligned KEYSTORE_PATH=<KEYSTORE_PATH> AMOUNT=<AMOUNT>
+
+# Generate ELF file and public-private key pair
+cd sp1-prover && make gen-key && make elf-commit
+```
+
+After this, you should find the `elf` folder, `encryption_key` and `private_encryption_key` in the `sp1-prover`
+directory.
+
+4. **Install the CLI**
+
+Finally, install the CLI from our source:
+
+```bash
+make start-cli KEYSTORE_PATH=<KEYSTORE_PATH>
+```
+
+### Usage
+
+To view all available commands, run:
+
+```bash
+tahken -h
 ```
