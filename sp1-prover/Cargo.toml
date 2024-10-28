@@ -10,6 +10,5 @@ tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "pa
 ecies = { version = "0.2.6", default-features = false, features = ["pure", "std"]}
 
 [dev-dependencies]
-sp1-sdk = "3.0.0"
 rand = "0.8.5"
 hex = "0.4.3"
