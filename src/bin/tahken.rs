@@ -180,17 +180,15 @@ async fn main() -> Result<()> {
                     network,
                     aligned_batcher_url,
                 )
-                .await {
-                    Ok(_) => {
-                        Ok(())
-                    }
+                .await
+                {
+                    Ok(_) => Ok(()),
                     Err(e) => {
                         println!("Failed to reveal winner of auction with id: {}", auction_id);
                         println!("{}", e);
                         Err(e)
                     }
                 }
-                
             }
             Commands::Withdraw { auction_id } => {
                 withdraw(signer, config.contract_address, U256::from(auction_id))

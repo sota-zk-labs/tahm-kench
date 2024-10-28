@@ -35,10 +35,10 @@ pub async fn create_new_auction(
     let erc721_contract_caller = erc721_contract.approve(auction_contract_address, token_id);
     let approve_tx = erc721_contract_caller.send().await?;
     let approve_receipt = approve_tx.await?.unwrap();
-    println!(
-        "Approve nft id {} successfully with transaction_hash : {:?}",
-        token_id, approve_receipt.transaction_hash
-    );
+    println!("==========================================================================");
+    println!("Approve NFT successfully with:",);
+    println!("Token ID: {:?}", token_id);
+    println!("Tx: {:?}", approve_receipt.transaction_hash);
     // Create Auction
     let zk_auction_contract =
         zkAuctionContract::new(auction_contract_address, signer.clone().into());
@@ -108,10 +108,10 @@ pub async fn create_bid(
         erc20_contract.approve(auction_contract_address, auction.deposit_price);
     let approve_tx = erc20_contract_caller.send().await?;
     let approve_receipt = approve_tx.await?.unwrap();
-    println!(
-        "Approve {} token to auction id {} successfully with transaction_hash : {:?}",
-        auction.deposit_price, auction_id, approve_receipt.transaction_hash
-    );
+    println!("==========================================================================");
+    println!("Approve {} token successfully with:", auction.deposit_price);
+    println!("Auction ID: {:?}", auction_id);
+    println!("Tx: {:?}", approve_receipt.transaction_hash);
 
     let encryption_key = PublicKey::parse((*auction.encryption_key.to_vec()).try_into()?)
         .expect("Wrong on-chain encryption key");
@@ -171,6 +171,7 @@ pub async fn reveal_winner(
             "Failed to get list bids from auction with id: {}",
             auction_id
         ))?;
+    println!("bidders: {:?}", bidders);
     //Send to SP1
     let mut auc_id = [0; 32];
     auction_id.to_big_endian(&mut auc_id);
@@ -185,6 +186,7 @@ pub async fn reveal_winner(
         batcher_url,
     )
     .await?;
+    println!("Ok");
 
     // Submit proof to SMC
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());

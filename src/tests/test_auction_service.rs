@@ -43,7 +43,7 @@ async fn test_auction_service() {
     let nft_contract_address = Address::from_str(&nft_contract_address_input).unwrap();
 
     let new_token_id = auction_total + 1;
-    println!("new_token_id: {}", new_token_id);
+    println!("New token ID: {}", new_token_id);
     // let hduoc_addres = Address::from_str("0xeDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap();
     // let _ = set_up_nft(signer.clone(), hduoc_addres.clone(), nft_contract_address, new_token_id).await;
     let _ = set_up_nft(
@@ -119,10 +119,9 @@ async fn set_up_token(
     let token_contract_caller = token_contract.mint(wallet_address, token_mint);
     let token_tx = token_contract_caller.send().await.unwrap();
     let token_receipt = token_tx.await.unwrap().unwrap();
-    println!(
-        "Mint token successfully transaction hash: {:?}",
-        token_receipt.transaction_hash
-    );
+    println!("==========================================================================");
+    println!("Mint {} token successfully with:", token_mint);
+    println!("Tx: {:?}", token_receipt.transaction_hash);
 }
 
 async fn set_up_nft(
@@ -136,10 +135,10 @@ async fn set_up_nft(
     let nft_contract_caller = erc721_contract.mint(wallet_address, new_token_id);
     let nft_tx = nft_contract_caller.send().await.unwrap();
     let nft_receipt = nft_tx.await.unwrap().unwrap();
-    println!(
-        "Mint nft successfully with token_id = {} and transaction hash: {:?}",
-        new_token_id, nft_receipt.transaction_hash
-    );
+    println!("==========================================================================");
+    println!("Mint NFT successfully with:",);
+    println!("Token ID: {:?}", new_token_id);
+    println!("Tx: {:?}", nft_receipt.transaction_hash);
 }
 
 async fn set_up_wallet(
