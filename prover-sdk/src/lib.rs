@@ -148,8 +148,7 @@ pub async fn get_winner_and_submit_proof(
         Token::Uint(Uint::from(index_in_batch)),
     ]);
 
-    fs::write("verified_proof", &verified_proof)
-        .expect("Failed to write verified proof to file");
+    fs::write("verified_proof", &verified_proof).expect("Failed to write verified proof to file");
 
     Ok((winner_addr, winner_amount, verified_proof))
 }
@@ -175,8 +174,10 @@ pub fn flatten(vec: &[[u8; 32]]) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
     use std::env;
+    use std::fs::File;
+    use std::io::Read;
+    use std::str::FromStr;
 
     use aligned_sdk::core::types::Network;
     use aligned_sp1_prover::{AuctionData, Bidder};
@@ -184,8 +185,9 @@ mod tests {
     use ethers::prelude::Signer;
     use ethers::signers::LocalWallet;
     use ethers::types::{Bytes, H160};
+    use sp1_sdk::{ProverClient, SP1Stdin};
 
-    use crate::{encrypt_bidder_amount, ENCRYPTION_PUBLIC_KEY};
+    use crate::{encrypt_bidder_amount, ENCRYPTION_PRIVATE_KEY, ENCRYPTION_PUBLIC_KEY};
 
     #[tokio::test]
     async fn test_submit_proof() {
@@ -195,32 +197,49 @@ mod tests {
         let wallet = LocalWallet::from_str(&env::var("PRIVATE_KEY").unwrap())
             .unwrap()
             .with_chain_id(17000u64);
-        let pbk = PublicKey::parse(
-            (*hex::decode(ENCRYPTION_PUBLIC_KEY).unwrap())
-                .try_into()
-                .unwrap(),
-        )
-        .unwrap();
-
-        let data = AuctionData {
-            bidders: vec![
-                Bidder {
-                    encrypted_amount: encrypt_bidder_amount(&3, &pbk),
-                    address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
-                },
-                Bidder {
-                    encrypted_amount: encrypt_bidder_amount(&2, &pbk),
-                    address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
-                },
-            ],
-            id: vec![0; 32],
-        };
 
         let (_winner_addr, winner_amount, _verified_proof) =
-            super::get_winner_and_submit_proof(wallet, &data, rpc_url, network, batcher_url)
+            super::get_winner_and_submit_proof(wallet, &auction_data(), rpc_url, network, batcher_url)
                 .await
                 .unwrap();
         dbg!(winner_amount);
+    }
+
+    #[test]
+    fn test_sp1_prover() {
+        // find_winner(&auction_data(), PrivateKey::from_bytes(hex::decode(ENCRYPTION_PRIVATE_KEY).unwrap()));
+        let elf = {
+            let mut buffer = Vec::new();
+            File::open("../sp1-prover/elf/riscv32im-succinct-zkvm-elf")
+                .unwrap()
+                .read_to_end(&mut buffer)
+                .unwrap();
+            buffer
+        };
+
+        let mut stdin = SP1Stdin::new();
+        stdin.write(&auction_data());
+        stdin.write(&hex::decode(ENCRYPTION_PRIVATE_KEY).unwrap());
+
+        let client = ProverClient::new();
+        let (pk, vk) = client.setup(elf.as_slice());
+
+        println!("Generating proof...");
+        let Ok(mut proof) = client.prove(&pk, stdin).compressed().run() else {
+            println!("Something went wrong!");
+            return;
+        };
+
+        println!("Proof generated successfully. Verifying proof...");
+        client.verify(&proof, &vk).expect("verification failed");
+        println!("Proof verified successfully.");
+
+        // println!("{:?}", proof.public_values);
+        let hash_data = proof.public_values.read::<[u8; 32]>();
+        println!("{:?}", hash_data);
+        let winner_addr = proof.public_values.read::<Vec<u8>>();
+        println!("{:?}", winner_addr);
+        // Todo: validate with data
     }
 
     #[test]
@@ -236,5 +255,29 @@ mod tests {
 
         let g = include_bytes!("../pub_input");
         println!("{:?}", g);
+    }
+
+    fn auction_data() -> AuctionData {
+        let pbk = PublicKey::parse(
+            &hex::decode(ENCRYPTION_PUBLIC_KEY)
+                .unwrap()
+                .try_into()
+                .unwrap(),
+        )
+        .unwrap();
+
+        AuctionData {
+            bidders: vec![
+                Bidder {
+                    encrypted_amount: encrypt_bidder_amount(&3, &pbk),
+                    address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
+                },
+                Bidder {
+                    encrypted_amount: encrypt_bidder_amount(&2, &pbk),
+                    address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
+                },
+            ],
+            id: vec![0; 32],
+        }
     }
 }
