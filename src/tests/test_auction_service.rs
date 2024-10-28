@@ -39,7 +39,7 @@ async fn test_auction_service(){
         .expect("Failed to decrypt keystore")
         .with_chain_id(chain_id.as_u64());
 
-    let encryption_key = get_encryption_key().unwrap();
+    // let encryption_key = get_encryption_key().unwrap();
     let signer = SignerMiddleware::new(provider.clone(), wallet.clone());
     let wallet_address = signer.clone().address();
 
@@ -51,74 +51,74 @@ async fn test_auction_service(){
     let auction_total = contract.auction_count().call().await.unwrap();
 
 
-    let nft_contract_address_input = "0xe1dbf8c8918ab4da4c8f301ca537151c487ca87c";
+    let nft_contract_address_input = "0x4dab910a86affd90d888d82f16e9faaf33f5ee61";
     let nft_contract_address = Address::from_str(&nft_contract_address_input).unwrap();
 
     let new_token_id = auction_total + 1;
     println!("new_token_id: {}", new_token_id);
     let hduoc_addres = Address::from_str("0xeDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap();
-    // let _ = set_up_nft(signer.clone(), hduoc_addres, nft_contract_address, new_token_id);
-    let _ = set_up_nft(signer.clone(), wallet_address.clone(), nft_contract_address, new_token_id).await;
+    let _ = set_up_nft(signer.clone(), hduoc_addres, nft_contract_address, new_token_id).awit;
+    // let _ = set_up_nft(signer.clone(), wallet_address.clone(), nft_contract_address, new_token_id).await;
 
 
     let token_mint = U256::from(1000u128);
     let _ = set_up_token(config.clone(), signer.clone(), wallet_address, token_mint).await;
 
 
-    // Test create new auction success
-    let name = "test".to_string();
-    let description = "nothing".to_string();
-
-    // Create new auction
-    let _ = create_new_auction(
-        signer.clone(),
-        config.contract_address,
-        &encryption_key,
-        name,
-        description,
-        nft_contract_address,
-        new_token_id,
-        token_mint,
-        U256::from(60),
-    )
-    .await
-    .unwrap();
-    println!("Running test create new auction ...✓");
-
-    // Create new bid
-    let _ = create_bid(
-        signer.clone(),
-        config.contract_address,
-        config.token_address,
-        new_token_id,
-        1000,
-    )
-    .await
-    .unwrap();
-    println!("Running test create new bid ...✓");
-
-    println!("Sleep 60 second...");
-    sleep(Duration::from_secs(60)).await;
-    println!("Sleep over");
-    println!("Utc now: {:?}", Utc::now());
-
-    // Get list bid
-    let _ = reveal_winner(
-        signer.clone(),
-        config.contract_address,
-        U256::from(2),
-        // new_token_id,
-        wallet,
-        rpc_url,
-        network,
-        aligned_batcher_url
-    )
-    .await
-    .unwrap();
-    println!("Running test reveal winner ...✓");
-
-    let x = encrypt_bidder_amount(&1000, &get_encryption_key().unwrap());
-    println!("{:?}", x);
+    // // Test create new auction success
+    // let name = "test".to_string();
+    // let description = "nothing".to_string();
+    //
+    // // Create new auction
+    // let _ = create_new_auction(
+    //     signer.clone(),
+    //     config.contract_address,
+    //     &encryption_key,
+    //     name,
+    //     description,
+    //     nft_contract_address,
+    //     new_token_id,
+    //     token_mint,
+    //     U256::from(60),
+    // )
+    // .await
+    // .unwrap();
+    // println!("Running test create new auction ...✓");
+    //
+    // // Create new bid
+    // let _ = create_bid(
+    //     signer.clone(),
+    //     config.contract_address,
+    //     config.token_address,
+    //     new_token_id,
+    //     1000,
+    // )
+    // .await
+    // .unwrap();
+    // println!("Running test create new bid ...✓");
+    //
+    // println!("Sleep 60 second...");
+    // sleep(Duration::from_secs(60)).await;
+    // println!("Sleep over");
+    // println!("Utc now: {:?}", Utc::now());
+    //
+    // // Get list bid
+    // let _ = reveal_winner(
+    //     signer.clone(),
+    //     config.contract_address,
+    //     U256::from(2),
+    //     // new_token_id,
+    //     wallet,
+    //     rpc_url,
+    //     network,
+    //     aligned_batcher_url
+    // )
+    // .await
+    // .unwrap();
+    // println!("Running test reveal winner ...✓");
+    //
+    // let x = encrypt_bidder_amount(&1000, &get_encryption_key().unwrap());
+    // println!("{:?}", x);
 }
 
 

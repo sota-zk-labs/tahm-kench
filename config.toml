@@ -1,6 +1,6 @@
-contract_address = "0x7606e299058f2c6a39e007c2193c4c8387af0d1c"
-token_address = "0x9cb9b61893ecbe0dcd85b0366584b2d9c3cb8769"
-nft_address = "0xe1dbf8c8918ab4da4c8f301ca537151c487ca87c"
+contract_address = "0x07e45d6971dd3e72f9a9408560554754462ab807"
+token_address = "0x9021e645c961993d2b91042345d7a0e125452ed0"
+nft_address = "0x4dab910a86affd90d888d82f16e9faaf33f5ee61"
 wallet_address_test = "0xeDe4C2b4BdBE580750a99F016b0A1581C3808FA3"
 [chain]
 etherscan_api_key = "2G4MBDIY1RNFHVZS27HR1KKVBHCX8YJ7WE"
