@@ -149,6 +149,9 @@ pub async fn reveal_winner(
             "Failed to get list bids from auction with id: {}",
             auction_id
         ))?;
+
+    println!("Get list bids success: {:?}", bidders);
+    println!("Running test get list bids ...✓");
     //Send to SP1
     let mut auc_id = [0; 32];
     auction_id.to_big_endian(&mut auc_id);
@@ -163,6 +166,7 @@ pub async fn reveal_winner(
         batcher_url,
     )
     .await?;
+    println!("Running send to SP1 list bid ...✓");
 
     // Submit proof to SMC
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
@@ -175,7 +179,9 @@ pub async fn reveal_winner(
         Bytes::from(verified_proof),
     );
     let tx = contract_caller.send().await?;
+    println!("1");
     let receipt = tx.await?.unwrap();
+    println!("2");
     let tx_hash = receipt.transaction_hash;
     println!(
         "Reveal winner successfully with transaction_hash : {:?}",
