@@ -1,7 +1,7 @@
 #![no_main]
 
-use ecies::SecretKey;
 use aligned_sp1_prover::{calc_auction_hash, decrypt_bidder_data, AuctionData};
+use ecies::SecretKey;
 
 sp1_zkvm::entrypoint!(main);
 

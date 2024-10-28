@@ -45,6 +45,7 @@ ethers = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true }
 prover-sdk = { path = "prover-sdk" }
+futures-util = "0.3.31"
 
 [dev-dependencies]
 tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "patch-v2.0.2", features = ["keccak"] }

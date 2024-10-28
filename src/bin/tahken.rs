@@ -1,13 +1,14 @@
 use std::str::FromStr;
+use std::sync::Arc;
 
 use aligned_sdk::core::types::Network;
 use anyhow::Result;
 use clap::CommandFactory;
 use clap::{Parser, Subcommand};
 use ethers::prelude::*;
-use ethers::providers::{Http, Provider};
+use ethers::providers::Provider;
 use ethers::signers::{LocalWallet, Signer};
-use home::home_dir;
+use futures_util::StreamExt;
 use prover_sdk::get_encryption_key;
 use zk_auction::config::Config;
 use zk_auction::controllers::auction::{
@@ -25,7 +26,8 @@ struct Cli {
     #[clap(short, long, default_value = "config.toml")]
     config_path: String,
     /// Path of local wallet
-    #[clap(short, long, default_value = ".tahken/keystores/wallet_tahken")]
+    // #[clap(short, long, default_value = ".tahken/keystores/wallet_tahken")]
+    #[clap(short, long)]
     keystore_path: String,
 }
 #[derive(Subcommand, Clone, Debug, PartialEq)]
@@ -90,7 +92,10 @@ async fn main() -> Result<()> {
     let network = Network::from_str(&config.chain.network).unwrap();
     let aligned_batcher_url = config.chain.aligned_batcher_url.as_str();
 
-    let provider = Provider::<Http>::try_from(rpc_url).expect("Failed to connect to provider");
+    let provider = Provider::<Ws>::connect(rpc_url)
+        .await
+        .expect("Failed to connect to provider");
+
     let chain_id = provider
         .get_chainid()
         .await
@@ -99,16 +104,18 @@ async fn main() -> Result<()> {
     let keystore_password = rpassword::prompt_password("Enter keystore password: ")
         .expect("Failed to read keystore password");
 
-    let home_dir = home_dir().expect("Failed to get home directory");
-    let path = home_dir.join(&args.keystore_path);
-    println!("path: {:?}", path);
+    // let home_dir = home_dir().expect("Failed to get home directory");
+    // let path = home_dir.join(&args.keystore_path);
+    //
+    // let wallet = LocalWallet::decrypt_keystore(path, &keystore_password)
+    //     .expect("Failed to decrypt keystore")
+    //     .with_chain_id(chain_id.as_u64());
 
-    let wallet = LocalWallet::decrypt_keystore(path, &keystore_password)
+    let wallet = LocalWallet::decrypt_keystore(&args.keystore_path, &keystore_password)
         .expect("Failed to decrypt keystore")
         .with_chain_id(chain_id.as_u64());
 
-    let signer = SignerMiddleware::new(provider.clone(), wallet.clone());
-
+    let signer = SignerMiddleware::new(Arc::new(provider.clone()), wallet.clone());
     match args.command {
         Some(command) => match command {
             Commands::Version => {
@@ -124,7 +131,7 @@ async fn main() -> Result<()> {
                 time,
             } => {
                 let encryption_key = get_encryption_key()?;
-                create_new_auction(
+                let _ = create_new_auction(
                     signer,
                     config.contract_address,
                     &encryption_key,

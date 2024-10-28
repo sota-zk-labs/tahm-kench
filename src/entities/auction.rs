@@ -31,6 +31,7 @@ impl From<(Address, Bytes, Asset, Winner, U256, U256, bool)> for AuctionEntity {
 
 impl AuctionEntity {
     pub fn print_info(&self) {
+        println!("==========================================================================");
         println!("Auction Details:");
         println!("Name: {}", self.asset.name);
         println!("Seller: {:?}", self.owner);
@@ -43,7 +44,11 @@ impl AuctionEntity {
         println!("  Address: {:?}", self.winner.winner);
         println!("  Encrypted Price: {:?}", self.winner.price);
         println!("Deposit price: {:?} USDT", self.deposit_price);
-        println!("End Time: {:?}", Utc.timestamp_opt(self.end_time.as_u128() as i64, 0).unwrap());
+        println!(
+            "End Time: {:?}",
+            Utc.timestamp_opt(self.end_time.as_u128() as i64, 0)
+                .unwrap()
+        );
         println!("Ended: {}", self.ended);
     }
 }

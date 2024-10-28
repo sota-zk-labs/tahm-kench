@@ -4,6 +4,7 @@ nft_address = "0x4dab910a86affd90d888d82f16e9faaf33f5ee61"
 wallet_address_test = "0xeDe4C2b4BdBE580750a99F016b0A1581C3808FA3"
 [chain]
 etherscan_api_key = "2G4MBDIY1RNFHVZS27HR1KKVBHCX8YJ7WE"
-rpc_url = "https://ethereum-holesky-rpc.publicnode.com"
+#rpc_url = "https://ethereum-holesky-rpc.publicnode.com"
+rpc_url = "wss://ethereum-holesky-rpc.publicnode.com"
 network = "holesky"
 aligned_batcher_url = "wss://batcher.alignedlayer.com"

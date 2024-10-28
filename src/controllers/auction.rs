@@ -1,12 +1,16 @@
+use std::sync::Arc;
+
 use aligned_sdk::core::types::Network;
 use aligned_sp1_prover::{AuctionData, Bidder};
 use anyhow::{Context, Result};
 use ecies::PublicKey;
+use ethers::abi::AbiDecode;
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::middleware::SignerMiddleware;
 use ethers::prelude::*;
-use ethers::prelude::{Http, LocalWallet, Provider};
+use ethers::prelude::{LocalWallet, Provider};
 use ethers::types::{Address, Bytes, U256};
+use ethers::utils::keccak256;
 use prover_sdk::{encrypt_bidder_amount, get_winner_and_submit_proof};
 
 use crate::entities::auction::AuctionEntity;
@@ -16,7 +20,7 @@ abigen!(erc20Contract, "./assets/erc20.json");
 abigen!(zkAuctionContract, "./assets/ZkAuction.json");
 
 pub async fn create_new_auction(
-    signer: SignerMiddleware<Provider<Http>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
     auction_contract_address: Address,
     pbk_encryption: &PublicKey,
     name: String,
@@ -36,7 +40,8 @@ pub async fn create_new_auction(
         token_id, approve_receipt.transaction_hash
     );
     // Create Auction
-    let zk_auction_contract = zkAuctionContract::new(auction_contract_address, signer.into());
+    let zk_auction_contract =
+        zkAuctionContract::new(auction_contract_address, signer.clone().into());
     let contract_caller = zk_auction_contract.create_auction(
         Bytes::from(pbk_encryption.serialize()),
         nft_contract_address,
@@ -48,16 +53,22 @@ pub async fn create_new_auction(
     );
     let tx = contract_caller.send().await?;
     let receipt = tx.await?.unwrap();
-    let tx_hash = receipt.transaction_hash;
-    println!(
-        "Create auction successfully with transaction_hash : {:?}",
-        tx_hash
-    );
+    let events = receipt.logs;
+    println!("==========================================================================");
+    for log in events {
+        if log.topics[0] == H256::from(keccak256("AuctionCreated(uint256,address)")) {
+            println!("Create auction successfully with:");
+            println!("Owner: {:?}", Address::from(log.topics[2]));
+            println!("Auction ID: {:?}", U256::decode(log.topics[1])?);
+            println!("Block: {:?}", log.block_number.unwrap());
+            println!("Tx: {:?}", log.transaction_hash.unwrap());
+        }
+    }
     Ok(())
 }
 
 pub async fn get_auction(
-    signer: SignerMiddleware<Provider<Http>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
     auction_contract_address: Address,
     auction_id: U256,
 ) -> Result<AuctionEntity> {
@@ -69,23 +80,27 @@ pub async fn get_auction(
 }
 
 pub async fn get_total_auction(
-    signer: SignerMiddleware<Provider<Http>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
     auction_contract_address: Address,
-) -> Result<()> {
+) -> Result<U256> {
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
     let total = contract.auction_count().call().await?;
     println!("Auctions total: {:?}", total);
-    Ok(())
+    Ok(total)
 }
 
 pub async fn create_bid(
-    signer: SignerMiddleware<Provider<Http>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
     auction_contract_address: Address,
     token_address: Address,
     auction_id: U256,
     bid_price: u128,
 ) -> Result<()> {
     let auction = get_auction(signer.clone(), auction_contract_address, auction_id).await?;
+    if U256::from(bid_price) > auction.deposit_price {
+        println!("You need bid with price < deposit price");
+        return Ok(());
+    }
     // Approve token
     let erc20_contract = erc20Contract::new(token_address, signer.clone().into());
 
@@ -100,24 +115,31 @@ pub async fn create_bid(
 
     let encryption_key = PublicKey::parse((*auction.encryption_key.to_vec()).try_into()?)
         .expect("Wrong on-chain encryption key");
-    // encrypted price
+    // Encrypted price
     let encrypted_price = encrypt_bidder_amount(&bid_price, &encryption_key);
 
     // Create bid
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
-    let contract_caller = contract.place_bid(auction_id, Bytes::from(encrypted_price));
+    let contract_caller = contract.place_bid(auction_id, Bytes::from(encrypted_price.clone()));
     let tx = contract_caller.send().await?;
     let receipt = tx.await?.unwrap();
-    let tx_hash = receipt.transaction_hash;
-    println!(
-        "Create bid successfully with transaction_hash : {:?}",
-        tx_hash
-    );
+    let events = receipt.logs;
+    println!("==========================================================================");
+    for log in events {
+        if log.topics[0] == H256::from(keccak256("NewBid(uint256,address,bytes)")) {
+            println!("Create new bid successfully with:");
+            println!("Bidder address: {:?}", Address::from(log.topics[2]));
+            println!("Auction ID: {:?}", U256::decode(log.topics[1])?);
+            println!("Encrypted price: {:?}", encrypted_price);
+            println!("Block: {:?}", log.block_number.unwrap());
+            println!("Tx: {:?}", log.transaction_hash.unwrap());
+        }
+    }
     Ok(())
 }
 
 pub async fn get_list_bids(
-    signer: SignerMiddleware<Provider<Http>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
     auction_contract_address: Address,
     auction_id: U256,
 ) -> Result<Vec<Bidder>> {
@@ -134,7 +156,7 @@ pub async fn get_list_bids(
 }
 
 pub async fn reveal_winner(
-    signer: SignerMiddleware<Provider<Http>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
     auction_contract_address: Address,
     auction_id: U256,
     wallet: Wallet<SigningKey>,
@@ -149,9 +171,6 @@ pub async fn reveal_winner(
             "Failed to get list bids from auction with id: {}",
             auction_id
         ))?;
-
-    println!("Get list bids success: {:?}", bidders);
-    println!("Running test get list bids ...✓");
     //Send to SP1
     let mut auc_id = [0; 32];
     auction_id.to_big_endian(&mut auc_id);
@@ -166,7 +185,6 @@ pub async fn reveal_winner(
         batcher_url,
     )
     .await?;
-    println!("Running send to SP1 list bid ...✓");
 
     // Submit proof to SMC
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
@@ -179,19 +197,24 @@ pub async fn reveal_winner(
         Bytes::from(verified_proof),
     );
     let tx = contract_caller.send().await?;
-    println!("1");
     let receipt = tx.await?.unwrap();
-    println!("2");
-    let tx_hash = receipt.transaction_hash;
-    println!(
-        "Reveal winner successfully with transaction_hash : {:?}",
-        tx_hash
-    );
+    let events = receipt.logs;
+    println!("==========================================================================");
+    for log in events {
+        if log.topics[0] == H256::from(keccak256("AuctionEnded(uint256,address,uint128)")) {
+            println!("Reveal winner successfully with:");
+            println!("Winner address: {:?}", Address::from(log.topics[2]));
+            println!("Auction ID: {:?}", U256::decode(log.topics[1])?);
+            println!("Price: {:?}", U128::decode(log.topics[3])?);
+            println!("Block: {:?}", log.block_number.unwrap());
+            println!("Tx: {:?}", log.transaction_hash.unwrap());
+        }
+    }
     Ok(())
 }
 
 pub async fn withdraw(
-    signer: SignerMiddleware<Provider<Http>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
     auction_contract_address: Address,
     auction_id: U256,
 ) -> Result<()> {
