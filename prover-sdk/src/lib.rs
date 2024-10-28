@@ -159,7 +159,7 @@ pub fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
 
 pub fn get_encryption_key() -> Result<PublicKey> {
     Ok(PublicKey::parse(
-        &hex::decode(fs::read_to_string("../sp1-prover/encryption_key")?)?
+        &hex::decode(fs::read_to_string("sp1-prover/encryption_key")?)?
             .try_into()
             .unwrap(),
     )
@@ -168,14 +168,14 @@ pub fn get_encryption_key() -> Result<PublicKey> {
 
 pub fn get_private_encryption_key() -> Result<SecretKey> {
     Ok(SecretKey::parse_slice(&hex::decode(fs::read_to_string(
-        "../sp1-prover/private_encryption_key",
+        "sp1-prover/private_encryption_key",
     )?)?)
     .expect("parsing private encryption key failed"))
 }
 
 pub fn get_elf() -> Result<Vec<u8>> {
     let mut buffer = Vec::new();
-    File::open("../sp1-prover/elf/riscv32im-succinct-zkvm-elf")?.read_to_end(&mut buffer)?;
+    File::open("sp1-prover/elf/riscv32im-succinct-zkvm-elf")?.read_to_end(&mut buffer)?;
     Ok(buffer)
 }
 

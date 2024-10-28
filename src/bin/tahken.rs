@@ -105,7 +105,6 @@ async fn main() -> Result<()> {
         .expect("Failed to decrypt keystore")
         .with_chain_id(chain_id.as_u64());
 
-    let encryption_key = get_encryption_key()?;
     let signer = SignerMiddleware::new(provider.clone(), wallet.clone());
 
     match args.command {
@@ -122,6 +121,7 @@ async fn main() -> Result<()> {
                 target_price,
                 time,
             } => {
+                let encryption_key = get_encryption_key()?;
                 create_new_auction(
                     signer,
                     config.contract_address,
