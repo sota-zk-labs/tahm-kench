@@ -15,8 +15,5 @@ tokio = { workspace = true }
 ecies = { workspace = true }
 dialoguer = { workspace = true }
 
-[patch.crates-io]
-axum = "=0.7.4"
-
 [dev-dependencies]
 tiny-keccak = "2.0.2"

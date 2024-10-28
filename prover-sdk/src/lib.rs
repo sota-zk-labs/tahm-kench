@@ -28,8 +28,9 @@ pub async fn get_winner_and_submit_proof(
     let mut stdin = SP1Stdin::new();
     stdin.write(auction_data);
     stdin.write(&hex::decode(ENCRYPTION_PRIVATE_KEY)?);
-
+    println!("ok");
     let client = ProverClient::new();
+    println!("ok1");
     let (pk, vk) = client.setup(ELF);
 
     println!("Creating proof...");
