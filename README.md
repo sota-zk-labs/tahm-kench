@@ -43,7 +43,7 @@ Key components of the project include:
 
 ### Workflow
 
-The core logic of **SilentBid** operates on-chain, while off-chain processes handle the winner calculation and proof
+The core logic of **Tahm-Kech** operates on-chain, while off-chain processes handle the winner calculation and proof
 generation. The auction process follows four main phases:
 
 1. **Initial Setup**: The auction owner creates the auction, sets the required deposit amount, transfers assets to the

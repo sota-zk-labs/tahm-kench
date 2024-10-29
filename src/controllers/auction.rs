@@ -206,7 +206,6 @@ pub async fn reveal_winner(
             println!("Reveal winner successfully with:");
             println!("Winner address: {:?}", Address::from(log.topics[2]));
             println!("Auction ID: {:?}", U256::decode(log.topics[1])?);
-            println!("Price: {:?}", U128::decode(log.topics[3])?);
             println!("Block: {:?}", log.block_number.unwrap());
             println!("Tx: {:?}", log.transaction_hash.unwrap());
         }
