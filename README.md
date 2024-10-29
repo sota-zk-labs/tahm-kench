@@ -14,8 +14,21 @@ both privacy and fairness in the bidding process.
 Additionally, **Tahm-Kench** serves as a **reference model** for developers interested in building decentralized
 applications (dApps) using **Aligned** and **ZKPs**.
 
-## Team members :busts_in_silhouette:
-
+## Team :busts_in_silhouette:
+- **Team Members:** We are part of [SotaZK Labs](https://sotazk.org/), a team focused on pioneering zero-knowledge solutions to enhance
+  security and privacy in the decentralized world.
+- **Number of Members**: 7
+- **Contact Information:**
+    - **Name:** Steve Nguyen
+    - **Email:** zk.steve.nguyen@gmail.com
+    - **Telegram:** @zk_steve
+- **Prior Work/Research (Optional):**
+    - [ZKP Documentation](https://github.com/sota-zk-labs/zkp-documents): A repository dedicated to demystifying zero-knowledge proof
+      technology, including KZG, GKR, FRI, Plonk, DARK, Groth16, lattice-based commitment schemes, sum-check protocol, Nova, EIP-4844, etc.
+    - [ZKP Implementation](https://github.com/sota-zk-labs/zkp-implementation): Various ZKP protocols, including KZG, FRI, and Plonk.
+    - [Apstark](https://github.com/sota-zk-labs/apstark): A layer 2 ZK rollup blockchain built on the Aptos network using the Starknet
+      tech stack.
+      
 ## Overview
 
 ### Core idea
