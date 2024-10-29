@@ -242,7 +242,7 @@ mod tests {
         let mut stdin = SP1Stdin::new();
         stdin.write(&auction_data());
         stdin.write(
-            &hex::decode(get_private_encryption_key().unwrap().serialize().as_slice()).unwrap(),
+            &get_private_encryption_key().unwrap().serialize().to_vec()
         );
 
         let client = ProverClient::new();
