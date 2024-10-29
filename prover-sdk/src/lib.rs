@@ -29,6 +29,7 @@ pub async fn get_winner_and_submit_proof(
     stdin.write(auction_data);
     stdin.write(&get_private_encryption_key()?.serialize().to_vec());
 
+    println!("Ok");
     let client = ProverClient::new();
     let (pk, vk) = client.setup(get_elf()?.as_slice());
 

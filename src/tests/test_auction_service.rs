@@ -26,11 +26,8 @@ async fn test_auction_service() {
     // let (owner_signer, owner_wallet_address, wallet) = set_up_wallet(config.clone(), ".foundry/keystores/owner1".to_string()).await;
     // let (bidder_1_signer, bidder_1_wallet_address, wallet) = set_up_wallet(config.clone(), ".foundry/keystores/bider1".to_string()).await;
 
-    let (signer, wallet_address, wallet) = set_up_wallet(
-        config.clone(),
-        ".tahken/keystores/wallet_tahken".to_string(),
-    )
-    .await;
+    let (signer, wallet_address, wallet) =
+        set_up_wallet(config.clone(), ".foundry/keystores/dung1".to_string()).await;
 
     let rpc_url = &config.chain.rpc_url;
     let network = Network::from_str(&config.chain.network).unwrap();
@@ -43,9 +40,16 @@ async fn test_auction_service() {
     let nft_contract_address = Address::from_str(&nft_contract_address_input).unwrap();
 
     let new_token_id = auction_total + 1;
+    let token_mint = U256::from(1000u128);
     println!("New token ID: {}", new_token_id);
-    // let hduoc_addres = Address::from_str("0xeDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap();
-    // let _ = set_up_nft(signer.clone(), hduoc_addres.clone(), nft_contract_address, new_token_id).await;
+    // let owner_address = Address::from_str("0xeDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap();
+    // let _ = set_up_nft(
+    //     signer.clone(),
+    //     owner_address.clone(),
+    //     nft_contract_address,
+    //     new_token_id,
+    // )
+    // .await;
     let _ = set_up_nft(
         signer.clone(),
         wallet_address.clone(),
@@ -54,9 +58,9 @@ async fn test_auction_service() {
     )
     .await;
 
-    let token_mint = U256::from(1000u128);
-    let _ = set_up_token(config.clone(), signer.clone(), wallet_address, token_mint).await;
-    // let _ = set_up_token(config.clone(), signer.clone(), hduoc_addres.clone(), token_mint).await;
+    // let bidder_address = Address::from_str("0xB3bD6356709809786C1dA9B777732774215E5cB6").unwrap();
+    // let _ = set_up_token(config.clone(), signer.clone(), bidder_address, token_mint).await;
+    let _ = set_up_token(config.clone(), signer.clone(), wallet_address.clone(), token_mint).await;
 
     // Test create new auction success
     let name = "test".to_string();
@@ -84,33 +88,33 @@ async fn test_auction_service() {
         config.contract_address,
         config.token_address,
         new_token_id,
-        1000,
+        900,
     )
     .await
     .unwrap();
 
-    println!("Sleep 60 second...");
-    sleep(Duration::from_secs(60));
-    println!("Sleep over");
-    println!("Utc now: {:?}", Utc::now());
+    // println!("Sleep 60 second...");
+    // sleep(Duration::from_secs(60));
+    // println!("Sleep over");
+    // println!("Utc now: {:?}", Utc::now());
 
-    // Get list bid
-    let _ = reveal_winner(
-        signer.clone(),
-        config.contract_address,
-        new_token_id,
-        wallet,
-        rpc_url,
-        network,
-        aligned_batcher_url,
-    )
-    .await
-    .unwrap();
+    // // Get list bid
+    // let _ = reveal_winner(
+    //     signer.clone(),
+    //     config.contract_address,
+    //     new_token_id,
+    //     wallet,
+    //     rpc_url,
+    //     network,
+    //     aligned_batcher_url,
+    // )
+    // .await
+    // .unwrap();
 }
 
 async fn set_up_token(
     config: Config,
-    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     wallet_address: Address,
     token_mint: U256,
 ) {
@@ -125,7 +129,7 @@ async fn set_up_token(
 }
 
 async fn set_up_nft(
-    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     wallet_address: Address,
     nft_contract_address: Address,
     new_token_id: U256,
@@ -145,14 +149,12 @@ async fn set_up_wallet(
     config: Config,
     keystore_path: String,
 ) -> (
-    SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
+    SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     Address,
     Wallet<SigningKey>,
 ) {
-    let rpc_url = &config.chain.rpc_url;
-    let provider = Provider::<Ws>::connect(rpc_url)
-        .await
-        .expect("Failed to connect to provider");
+    let rpc_url = config.chain.rpc_url.as_str();
+    let provider = Provider::<Http>::try_from(rpc_url).expect("Failed to connect to provider");
     let chain_id = provider
         .get_chainid()
         .await

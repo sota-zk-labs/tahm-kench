@@ -20,7 +20,7 @@ abigen!(erc20Contract, "./assets/erc20.json");
 abigen!(zkAuctionContract, "./assets/ZkAuction.json");
 
 pub async fn create_new_auction(
-    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
     pbk_encryption: &PublicKey,
     name: String,
@@ -68,7 +68,7 @@ pub async fn create_new_auction(
 }
 
 pub async fn get_auction(
-    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
     auction_id: U256,
 ) -> Result<AuctionEntity> {
@@ -80,7 +80,7 @@ pub async fn get_auction(
 }
 
 pub async fn get_total_auction(
-    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
 ) -> Result<U256> {
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
@@ -90,7 +90,7 @@ pub async fn get_total_auction(
 }
 
 pub async fn create_bid(
-    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
     token_address: Address,
     auction_id: U256,
@@ -139,7 +139,7 @@ pub async fn create_bid(
 }
 
 pub async fn get_list_bids(
-    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
     auction_id: U256,
 ) -> Result<Vec<Bidder>> {
@@ -156,7 +156,7 @@ pub async fn get_list_bids(
 }
 
 pub async fn reveal_winner(
-    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
     auction_id: U256,
     wallet: Wallet<SigningKey>,
@@ -186,7 +186,6 @@ pub async fn reveal_winner(
         batcher_url,
     )
     .await?;
-    println!("Ok");
 
     // Submit proof to SMC
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
@@ -216,7 +215,7 @@ pub async fn reveal_winner(
 }
 
 pub async fn withdraw(
-    signer: SignerMiddleware<Arc<Provider<Ws>>, LocalWallet>,
+    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
     auction_id: U256,
 ) -> Result<()> {
