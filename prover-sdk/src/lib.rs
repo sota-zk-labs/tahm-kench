@@ -18,6 +18,16 @@ use ethers::types::{Address, U256};
 use sp1_sdk::{ProverClient, SP1Stdin};
 
 /// Return winner and proof for the function `revealWinner` in the contract
+///
+/// # Arguments
+///
+/// * `wallet`: wallet of the owner
+/// * `auction_data`: data of the auction
+/// * `rpc_url`: rpc url of the network
+/// * `network`: network supported by Aligned
+/// * `batcher_url`: Aligned batcher URL
+///
+/// returns: Result<(H160, u128, Vec<u8, Global>), Error> (winner address, winner amount, verified proof)
 pub async fn get_winner_and_submit_proof(
     wallet: Wallet<SigningKey>,
     auction_data: &AuctionData,
@@ -140,10 +150,19 @@ pub async fn get_winner_and_submit_proof(
     Ok((winner_addr, winner_amount, verified_proof))
 }
 
+/// Encrypts the amount of a bidder using the public key of the owner
+/// 
+/// # Arguments 
+/// 
+/// * `amount`: bid amount
+/// * `pbk`: public key of the owner
+/// 
+/// returns: Vec<u8, Global> encrypted amount
 pub fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
     ecies::encrypt(&pbk.serialize(), &amount.to_be_bytes()).expect("failed to encrypt bidder data")
 }
 
+/// Get the public encryption key of the owner
 pub fn get_encryption_key() -> Result<PublicKey> {
     Ok(PublicKey::parse(
         &hex::decode(fs::read_to_string("sp1-prover/encryption_key")?)?
@@ -153,6 +172,7 @@ pub fn get_encryption_key() -> Result<PublicKey> {
     .expect("parsing public encryption key failed"))
 }
 
+/// Get the private encryption key of the owner
 pub fn get_private_encryption_key() -> Result<SecretKey> {
     Ok(SecretKey::parse_slice(&hex::decode(fs::read_to_string(
         "sp1-prover/private_encryption_key",
@@ -160,12 +180,20 @@ pub fn get_private_encryption_key() -> Result<SecretKey> {
     .expect("parsing private encryption key failed"))
 }
 
+/// Get the ELF file that was compiled with the SP1 prover
 pub fn get_elf() -> Result<Vec<u8>> {
     let mut buffer = Vec::new();
     File::open("sp1-prover/elf/riscv32im-succinct-zkvm-elf")?.read_to_end(&mut buffer)?;
     Ok(buffer)
 }
 
+/// Flatten a 2D array into a 1D array
+/// 
+/// # Arguments 
+/// 
+/// * `vec`: 2D array
+/// 
+/// returns: Vec<u8, Global> Flatten array
 pub fn flatten(vec: &[[u8; 32]]) -> Vec<u8> {
     let mut res = vec![];
     for v in vec.iter() {
@@ -225,9 +253,7 @@ mod tests {
 
         let mut stdin = SP1Stdin::new();
         stdin.write(&auction_data());
-        stdin.write(
-            &get_private_encryption_key().unwrap().serialize().to_vec()
-        );
+        stdin.write(&get_private_encryption_key().unwrap().serialize().to_vec());
 
         let client = ProverClient::new();
         let (pk, vk) = client.setup(elf.as_slice());
@@ -260,9 +286,6 @@ mod tests {
 
         let y = Bytes::from(vec![1, 2, 3]);
         assert_eq!(y.to_vec(), vec![1, 2, 3]);
-
-        let g = include_bytes!("../pub_input");
-        println!("{:?}", g);
     }
 
     fn auction_data() -> AuctionData {

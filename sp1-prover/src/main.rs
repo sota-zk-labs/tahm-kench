@@ -5,12 +5,14 @@ use ecies::SecretKey;
 
 sp1_zkvm::entrypoint!(main);
 
+/// Entrypoint for the zkVM program.
 pub fn main() {
     let auction_data = sp1_zkvm::io::read::<AuctionData>();
 
     let pvk = SecretKey::parse_slice(&sp1_zkvm::io::read::<Vec<u8>>())
         .expect("missing private key to encode bidder data");
 
+    // Find the winner
     let mut winner_addr = &vec![];
     let mut winner_amount = 0;
     for bidder in &auction_data.bidders {

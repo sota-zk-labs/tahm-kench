@@ -14,6 +14,14 @@ pub struct Bidder {
     pub address: Vec<u8>,
 }
 
+/// Decrypt the encrypted bidder data using owner's private key
+///
+/// # Arguments
+///
+/// * `pvk`: owner's private key
+/// * `bidder`: encrypted bidder data
+///
+/// returns: u128 Bidder amount
 pub fn decrypt_bidder_data(pvk: &SecretKey, bidder: &Bidder) -> u128 {
     u128::from_be_bytes(
         ecies::decrypt(&pvk.serialize(), &bidder.encrypted_amount)
@@ -23,6 +31,13 @@ pub fn decrypt_bidder_data(pvk: &SecretKey, bidder: &Bidder) -> u128 {
     )
 }
 
+/// Calculate the hash of the auction data to ensure the integrity of the data
+///
+/// # Arguments
+///
+/// * `auction_data`: Data of the auction
+///
+/// returns: [u8; 32] hash(data) in bytes
 pub fn calc_auction_hash(auction_data: &AuctionData) -> [u8; 32] {
     let mut input = vec![];
     let mut hasher = Keccak::v256();
@@ -127,21 +142,5 @@ mod tests {
         let pvk = SecretKey::parse_slice(&hex::decode(PVK_HEX).unwrap())
             .expect("fail to read private key");
         (pvk, PublicKey::from_secret_key(&pvk))
-    }
-
-    fn auction_data(pbk: &PublicKey) -> AuctionData {
-        AuctionData {
-            bidders: vec![
-                Bidder {
-                    encrypted_amount: encrypt_bidder_amount(&3, pbk),
-                    address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
-                },
-                Bidder {
-                    encrypted_amount: encrypt_bidder_amount(&2, pbk),
-                    address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
-                },
-            ],
-            id: vec![0; 32],
-        }
     }
 }
