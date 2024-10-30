@@ -18,10 +18,23 @@ abigen!(nftContract, "./assets/erc721.json");
 abigen!(erc20Contract, "./assets/erc20.json");
 abigen!(zkAuctionContract, "./assets/ZkAuction.json");
 
+/// Creates a new auction.
+///
+/// # Arguments
+///
+/// * `signer` - A configured `SignerMiddleware` used for signing and sending transactions.
+/// * `auction_contract_address` - The contract address of the auction platform where the auction will be created.
+/// * `pk_encryption` - The public key used for encrypting auction-specific data.
+/// * `name` - A string containing the name of the auction.
+/// * `description` - A string describing the auction.
+/// * `nft_contract_address` - The address of the ERC-721 contract managing the NFT to be auctioned.
+/// * `token_id` - ID of the NFT token to be auctioned.
+/// * `target_price` - The price expected for the auction to be successful.
+/// * `duration` - The duration for which the auction will be active, measured in blockchain blocks or seconds, depending on the implementation.
 pub async fn create_new_auction(
     signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
-    pbk_encryption: &PublicKey,
+    pk_encryption: &PublicKey,
     name: String,
     description: String,
     nft_contract_address: Address,
@@ -42,7 +55,7 @@ pub async fn create_new_auction(
     let zk_auction_contract =
         zkAuctionContract::new(auction_contract_address, signer.clone().into());
     let contract_caller = zk_auction_contract.create_auction(
-        Bytes::from(pbk_encryption.serialize()),
+        Bytes::from(pk_encryption.serialize()),
         nft_contract_address,
         token_id,
         name,
@@ -66,6 +79,24 @@ pub async fn create_new_auction(
     Ok(())
 }
 
+/// Fetches details of a specific auction by ID.
+///
+/// # Arguments
+///
+/// * `signer` - A `SignerMiddleware` configured for interacting with the blockchain and signing transactions.
+/// * `auction_contract_address` - The contract address of the auction platform.
+/// * `auction_id` - ID of the auction.
+///
+/// # Returns
+///
+/// Returns a tuple containing:
+/// - `owner` - The address of the auction owner.
+/// - `encryption_key` - The public key used for encrypted bids.
+/// - `asset` - Struct holding information about the auctioned item (name, description, NFT contract address, token ID).
+/// - `winner` - Struct containing details of the current highest bidder, including address and encrypted price.
+/// - `deposit_price` - The minimum deposit price for the auction in USDT.
+/// - `end_time` - The auction end timestamp.
+/// - `ended` - A boolean indicating whether the auction has ended.
 pub async fn get_auction(
     signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
@@ -103,6 +134,16 @@ pub async fn get_auction(
     ))
 }
 
+/// Get the total count of auctions on auction contract.
+///
+/// # Arguments
+///
+/// * `signer` - A `SignerMiddleware` configured for interacting with the blockchain and signing transactions.
+/// * `auction_contract_address` - The contract address of the auction platform.
+///
+/// # Returns
+///
+/// Returns the total number of auctions (`U256`) currently managed by the contract.
 pub async fn get_total_auction(
     signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
@@ -113,6 +154,20 @@ pub async fn get_total_auction(
     Ok(total)
 }
 
+/// Places a new bid on a specific auction.
+///
+/// # Arguments
+///
+/// * `signer` - A `SignerMiddleware` configured for interacting with the blockchain and signing transactions.
+/// * `auction_contract_address` - The contract address of the auction platform.
+/// * `token_address` - The address of the ERC-20 token used for bid deposits.
+/// * `auction_id` - ID of the auction to bid on.
+/// * `bid_price` - The bid price to submit, in `u128`.
+///
+/// # Returns
+///
+/// Returns `Ok(())` if the bid is successfully placed or if the bid fails due to an invalid bid price.
+///
 pub async fn create_bid(
     signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
@@ -163,6 +218,17 @@ pub async fn create_bid(
     Ok(())
 }
 
+/// Retrieves a list of bids for a specified auction.
+///
+/// # Arguments
+///
+/// * `signer` - A `SignerMiddleware` configured for interacting with the blockchain and signing transactions.
+/// * `auction_contract_address` - The contract address of the auction platform.
+/// * `auction_id` - ID of the auction.
+///
+/// # Returns
+///
+/// Returns a `Result` containing a `Vec<Bidder>` with each bid's encrypted amount and bidder's address.
 pub async fn get_list_bids(
     signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
@@ -180,6 +246,28 @@ pub async fn get_list_bids(
     Ok(list_bids)
 }
 
+/// Reveals the auction winner.
+///
+/// # Arguments
+///
+/// * `signer` - A `SignerMiddleware` configured for interacting with the blockchain and signing transactions.
+/// * `auction_contract_address` - The contract address of the auction platform.
+/// * `auction_id` - ID of the auction.
+/// * `wallet` - Wallet used to sign the winner's proof and other operations.
+/// * `rpc_url` - URL of the Ethereum node to connect to.
+/// * `network` - The network on which the auction is deployed (e.g., Ethereum mainnet or testnet).
+/// * `batcher_url` - URL of the batcher service for processing ZKP proofs.
+///
+/// # Returns
+///
+/// Returns `Result<()>` indicating success or failure.
+///
+/// # Workflow
+///
+/// 1. Retrieves the list of bidders for the specified auction.
+/// 2. Calls an external function, `get_winner_and_submit_proof`, which determines the winner and generates a ZKP.
+/// 3. Submits the proof and winner information to the smart contract's `finalize_auction` function.
+/// 4. Processes transaction logs to verify the result.
 pub async fn reveal_winner(
     signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
@@ -238,6 +326,17 @@ pub async fn reveal_winner(
     Ok(())
 }
 
+/// Withdraws the deposit for a specific auction, if applicable, and completes the withdrawal process on the contract.
+///
+/// # Arguments
+///
+/// * `signer` - A `SignerMiddleware` configured for interacting with the blockchain and signing transactions.
+/// * `auction_contract_address` - The contract address of the auction platform.
+/// * `auction_id` - ID of the auction.
+///
+/// # Returns
+///
+/// Returns `Result<()>` indicating success or failure.
 pub async fn withdraw(
     signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
     auction_contract_address: Address,
