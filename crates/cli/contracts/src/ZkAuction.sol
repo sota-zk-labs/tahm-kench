@@ -13,7 +13,7 @@ contract ZkAuction is IERC721Receiver {
 
     // data for verifying batch inclusion
     error InvalidElf(bytes32 submittedElf);
-    bytes32 public constant ELF_COMMITMENT = 0x7c10ecda2f867d4fef5077830efd2123b0d06a66de974699994861b12785c4f2;
+    bytes32 public constant ELF_COMMITMENT = 0x01d6e3579da3e89108a88e4276227c6c75c656d51a5b6769e438ca1b19b40937;
     address public constant ALIGNED_SERVICE_MANAGER = 0x58F280BeBE9B34c9939C3C39e0890C81f163B623;
     address public constant ALIGNED_PAYMENT_SERVICE_ADDR = 0x815aeCA64a974297942D2Bbf034ABEe22a38A003;
 

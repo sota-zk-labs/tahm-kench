@@ -3,6 +3,7 @@ extern crate core;
 use std::fs;
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 
 use aligned_sdk::core::types::{Network, PriceEstimate, ProvingSystemId, VerificationData};
 use aligned_sdk::sdk::{estimate_fee, get_next_nonce, submit_and_wait_verification};
@@ -165,9 +166,11 @@ pub fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
 /// Get the public encryption key of the owner
 pub fn get_encryption_key() -> Result<PublicKey> {
     Ok(PublicKey::parse(
-        &hex::decode(fs::read_to_string("sp1-prover/encryption_key")?)?
-            .try_into()
-            .unwrap(),
+        &hex::decode(fs::read_to_string(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../sp1-prover/encryption_key"),
+        )?)?
+        .try_into()
+        .unwrap(),
     )
     .expect("parsing public encryption key failed"))
 }
@@ -175,7 +178,7 @@ pub fn get_encryption_key() -> Result<PublicKey> {
 /// Get the private encryption key of the owner
 pub fn get_private_encryption_key() -> Result<SecretKey> {
     Ok(SecretKey::parse_slice(&hex::decode(fs::read_to_string(
-        "sp1-prover/private_encryption_key",
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../sp1-prover/private_encryption_key"),
     )?)?)
     .expect("parsing private encryption key failed"))
 }
@@ -183,7 +186,11 @@ pub fn get_private_encryption_key() -> Result<SecretKey> {
 /// Get the ELF file that was compiled with the SP1 prover
 pub fn get_elf() -> Result<Vec<u8>> {
     let mut buffer = Vec::new();
-    File::open("sp1-prover/elf/riscv32im-succinct-zkvm-elf")?.read_to_end(&mut buffer)?;
+    File::open(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../sp1-prover//elf/riscv32im-succinct-zkvm-elf"),
+    )?
+    .read_to_end(&mut buffer)?;
     Ok(buffer)
 }
 

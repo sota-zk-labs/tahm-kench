@@ -3,13 +3,13 @@ SHELL := /bin/bash
 CONFIG_PATH=config.toml
 
 deploy-contract:
-	@chmod +x ./contracts/deploy.sh
-	@./contracts/deploy.sh
-	@cp contracts/out/ZkAuction.sol/ZkAuction.json assets/ZkAuction.json
+	@chmod +x ./crates/cli/contracts/deploy.sh
+	@./crates/cli/contracts/deploy.sh
+	@cp crates/cli/contracts/out/ZkAuction.sol/ZkAuction.json crates/cli/assets/ZkAuction.json
 
 test-submit-proof:
-	cd sp1-prover && make elf-commit
-	RUST_BACKTRACE=1 cargo test --release --color=always --lib tests::test_submit_proof --no-fail-fast --manifest-path prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture
+	cd crates/sp1-prover && make elf-commit
+	RUST_BACKTRACE=1 cargo test --release --color=always --lib tests::test_submit_proof --no-fail-fast --manifest-path crates/prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture
 
 deposit-to-aligned:
 	aligned deposit-to-batcher \
@@ -19,12 +19,18 @@ deposit-to-aligned:
     --amount $(AMOUNT)ether
 
 test-prove:
-	cd sp1-prover && make gen-key && make elf-commit
-	cargo test --release --color=always --lib tests::test_sp1_prover --no-fail-fast --manifest-path prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output
+	cd crates/sp1-prover && make gen-key && make elf-commit
+	cargo test --release --color=always --lib tests::test_sp1_prover --no-fail-fast --manifest-path crates/prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output
 
 update-abi:
-	cd contracts && rm -rf cache out broadcast && forge build
-	cp contracts/out/ZkAuction.sol/ZkAuction.json assets/ZkAuction.json
+	cd crates/cli/contracts && rm -rf cache out broadcast && forge build
+	cp crates/cli/contracts/out/ZkAuction.sol/ZkAuction.json crates/cli/assets/ZkAuction.json
 
 taplo-fmt:
 	taplo format --config taplo/taplo.toml
+
+install:
+	cargo install --path crates/cli --force
+
+test-mint:
+	RUST_BACKTRACE=1 cargo test --color=always --lib tests::test_auction::test_mint --no-fail-fast --manifest-path crates/cli/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture

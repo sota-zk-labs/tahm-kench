@@ -5,8 +5,7 @@
 ## Introduction
 
 **Tahm-Kench** is a [**Sealed-Bid Auction**](https://www.investopedia.com/terms/s/sealed-bid-auction.asp) platform built
-using [**SP1 zkVM**](https://docs.succinct.xyz/getting-started/install.html) and [**Aligned
-**](https://docs.alignedlayer.com/).
+using [**SP1 zkVM**](https://docs.succinct.xyz/getting-started/install.html) and [**Aligned**](https://docs.alignedlayer.com/).
 The project aims to facilitate secure and private auctions by leveraging **zero-knowledge proofs (ZKPs)** to determine
 the highest bidder without revealing individual bid amounts. This ensures both privacy and fairness in the bidding
 process.
@@ -142,7 +141,7 @@ If you are the owner, execute the following commands:
 make deposit-to-aligned KEYSTORE_PATH=<KEYSTORE_PATH> AMOUNT=<AMOUNT>
 
 # Generate ELF file and public-private key pair
-cd sp1-prover && make gen-key && make elf-commit
+cd crates/sp1-prover && make gen-key && make elf-commit
 ```
 
 After this, you should find the `elf` folder, `encryption_key` and `private_encryption_key` in the `sp1-prover`
@@ -166,6 +165,6 @@ tahken -h
 
 ### Demo
 
-You can watch our demo video [here](https://youtu.be/Mp-65Ou7t04).
+You can watch our demo video [here](https://www.youtube.com/watch?v=zd2pueMMGkQ).
 
 ## Project roadmap

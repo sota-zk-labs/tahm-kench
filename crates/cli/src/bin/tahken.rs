@@ -9,7 +9,6 @@ use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
 use ethers::providers::Provider;
 use ethers::signers::{LocalWallet, Signer};
-use futures_util::StreamExt;
 use prover_sdk::get_encryption_key;
 use zk_auction::auction::{
     create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
@@ -118,10 +117,10 @@ async fn main() -> Result<()> {
                 time,
                 keystore_path,
             } => {
-                let (signer, wallet_address, wallet) =
+                let (signer, _wallet_address, _wallet) =
                     set_up_wallet(config.clone(), keystore_path).await;
                 let encryption_key = get_encryption_key()?;
-                let _ = create_new_auction(
+                create_new_auction(
                     signer,
                     config.contract_address,
                     &encryption_key,
@@ -140,7 +139,7 @@ async fn main() -> Result<()> {
                 auction_id,
                 keystore_path,
             } => {
-                let (signer, wallet_address, wallet) =
+                let (signer, _wallet_address, _wallet) =
                     set_up_wallet(config.clone(), keystore_path).await;
                 let _ = get_auction(signer, config.contract_address, U256::from(auction_id))
                     .await

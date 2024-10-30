@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use aligned_sdk::core::types::Network;
 use aligned_sp1_prover::{AuctionData, Bidder};
 use anyhow::{Context, Result};
@@ -7,12 +5,12 @@ use chrono::{TimeZone, Utc};
 use ecies::PublicKey;
 use ethers::abi::AbiDecode;
 use ethers::core::k256::ecdsa::SigningKey;
-use ethers::middleware::SignerMiddleware;
 use ethers::prelude::*;
-use ethers::prelude::{LocalWallet, Provider};
 use ethers::types::{Address, Bytes, U256};
 use ethers::utils::keccak256;
 use prover_sdk::{encrypt_bidder_amount, get_winner_and_submit_proof};
+
+use crate::types::EthSigner;
 
 abigen!(nftContract, "./assets/erc721.json");
 abigen!(erc20Contract, "./assets/erc20.json");
@@ -32,7 +30,7 @@ abigen!(zkAuctionContract, "./assets/ZkAuction.json");
 /// * `target_price` - The price expected for the auction to be successful.
 /// * `duration` - The duration for which the auction will be active, measured in blockchain blocks or seconds, depending on the implementation.
 pub async fn create_new_auction(
-    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
+    signer: EthSigner,
     auction_contract_address: Address,
     pk_encryption: &PublicKey,
     name: String,
@@ -41,7 +39,7 @@ pub async fn create_new_auction(
     token_id: U256,
     target_price: U256,
     duration: U256,
-) -> Result<()> {
+) -> Result<U256> {
     // Approve NFT
     let erc721_contract = nftContract::new(nft_contract_address, signer.clone().into());
     let erc721_contract_caller = erc721_contract.approve(auction_contract_address, token_id);
@@ -52,8 +50,7 @@ pub async fn create_new_auction(
     println!("Token ID: {:?}", token_id);
     println!("Tx: {:?}", approve_receipt.transaction_hash);
     // Create Auction
-    let zk_auction_contract =
-        zkAuctionContract::new(auction_contract_address, signer.clone().into());
+    let zk_auction_contract = zkAuctionContract::new(auction_contract_address, signer.into());
     let contract_caller = zk_auction_contract.create_auction(
         Bytes::from(pk_encryption.serialize()),
         nft_contract_address,
@@ -67,16 +64,18 @@ pub async fn create_new_auction(
     let receipt = tx.await?.unwrap();
     let events = receipt.logs;
     println!("==========================================================================");
+    let mut auction_id = U256::zero();
     for log in events {
         if log.topics[0] == H256::from(keccak256("AuctionCreated(uint256,address)")) {
             println!("Create auction successfully with:");
             println!("Owner: {:?}", Address::from(log.topics[2]));
-            println!("Auction ID: {:?}", U256::decode(log.topics[1])?);
+            auction_id = U256::decode(log.topics[1])?;
+            println!("Auction ID: {:?}", auction_id);
             println!("Block: {:?}", log.block_number.unwrap());
             println!("Tx: {:?}", log.transaction_hash.unwrap());
         }
     }
-    Ok(())
+    Ok(auction_id)
 }
 
 /// Fetches details of a specific auction by ID.
@@ -98,7 +97,7 @@ pub async fn create_new_auction(
 /// - `end_time` - The auction end timestamp.
 /// - `ended` - A boolean indicating whether the auction has ended.
 pub async fn get_auction(
-    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
+    signer: EthSigner,
     auction_contract_address: Address,
     auction_id: U256,
 ) -> Result<(Address, Bytes, Asset, Winner, U256, U256, bool)> {
@@ -145,7 +144,7 @@ pub async fn get_auction(
 ///
 /// Returns the total number of auctions (`U256`) currently managed by the contract.
 pub async fn get_total_auction(
-    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
+    signer: EthSigner,
     auction_contract_address: Address,
 ) -> Result<U256> {
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
@@ -169,7 +168,7 @@ pub async fn get_total_auction(
 /// Returns `Ok(())` if the bid is successfully placed or if the bid fails due to an invalid bid price.
 ///
 pub async fn create_bid(
-    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
+    signer: EthSigner,
     auction_contract_address: Address,
     token_address: Address,
     auction_id: U256,
@@ -230,7 +229,7 @@ pub async fn create_bid(
 ///
 /// Returns a `Result` containing a `Vec<Bidder>` with each bid's encrypted amount and bidder's address.
 pub async fn get_list_bids(
-    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
+    signer: EthSigner,
     auction_contract_address: Address,
     auction_id: U256,
 ) -> Result<Vec<Bidder>> {
@@ -269,7 +268,7 @@ pub async fn get_list_bids(
 /// 3. Submits the proof and winner information to the smart contract's `finalize_auction` function.
 /// 4. Processes transaction logs to verify the result.
 pub async fn reveal_winner(
-    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
+    signer: EthSigner,
     auction_contract_address: Address,
     auction_id: U256,
     wallet: Wallet<SigningKey>,
@@ -338,7 +337,7 @@ pub async fn reveal_winner(
 ///
 /// Returns `Result<()>` indicating success or failure.
 pub async fn withdraw(
-    signer: SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
+    signer: EthSigner,
     auction_contract_address: Address,
     auction_id: U256,
 ) -> Result<()> {
