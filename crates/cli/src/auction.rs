@@ -23,6 +23,7 @@ abigen!(zkAuctionContract, "./assets/ZkAuction.json");
 /// * `signer` - A configured `SignerMiddleware` used for signing and sending transactions.
 /// * `auction_contract_address` - The contract address of the auction platform where the auction will be created.
 /// * `pk_encryption` - The public key used for encrypting auction-specific data.
+/// * `token_addr` - An IERC20 token address used for the auction.
 /// * `name` - A string containing the name of the auction.
 /// * `description` - A string describing the auction.
 /// * `nft_contract_address` - The address of the ERC-721 contract managing the NFT to be auctioned.
@@ -163,7 +164,6 @@ pub async fn get_total_auction(
 ///
 /// * `signer` - A `SignerMiddleware` configured for interacting with the blockchain and signing transactions.
 /// * `auction_contract_address` - The contract address of the auction platform.
-/// * `token_address` - The address of the ERC-20 token used for bid deposits.
 /// * `auction_id` - ID of the auction to bid on.
 /// * `bid_price` - The bid price to submit, in `u128`.
 ///
