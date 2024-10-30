@@ -4,11 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sp1-zkvm = { git = "https://github.com/succinctlabs/sp1.git", rev = "v1.0.8-testnet" }
+ecies = { version = "0.2.6", default-features = false, features = [
+  "pure",
+  "std",
+] }
 serde = "1.0.210"
-tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "patch-v2.0.2", features = ["keccak"] }
-ecies = { version = "0.2.6", default-features = false, features = ["pure", "std"]}
+sp1-zkvm = { git = "https://github.com/succinctlabs/sp1.git", rev = "v1.0.8-testnet" }
+tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "patch-v2.0.2", features = [
+  "keccak",
+] }
 
 [dev-dependencies]
-rand = "0.8.5"
 hex = "0.4.3"
+rand = "0.8.5"

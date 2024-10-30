@@ -26,3 +26,5 @@ update-abi:
 	cd contracts && rm -rf cache out broadcast && forge build
 	cp contracts/out/ZkAuction.sol/ZkAuction.json assets/ZkAuction.json
 
+taplo-fmt:
+	taplo format --config taplo/taplo.toml

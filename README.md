@@ -2,8 +2,6 @@
 
 [![License](https://img.shields.io/github/license/sota-zk-labs/orn)](./LICENSE)
 
-[//]: # ([![Continuous Integration]&#40;https://github.com/sota-zk/orn/actions/workflows/ci.yaml/badge.svg&#41;]&#40;https://github.com/sota-zk/orn/actions/workflows/ci.yaml/badge.svg&#41;)
-
 ## Introduction
 
 **Tahm-Kench** is a [**Sealed-Bid Auction**](https://www.investopedia.com/terms/s/sealed-bid-auction.asp) platform built
