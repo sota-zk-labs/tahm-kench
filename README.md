@@ -7,7 +7,8 @@
 ## Introduction
 
 **Tahm-Kench** is a [**Sealed-Bid Auction**](https://www.investopedia.com/terms/s/sealed-bid-auction.asp) platform built
-using [**SP1 zkVM**](https://docs.succinct.xyz/getting-started/install.html) and [**Aligned**](https://docs.alignedlayer.com/).
+using [**SP1 zkVM**](https://docs.succinct.xyz/getting-started/install.html) and [**Aligned
+**](https://docs.alignedlayer.com/).
 The project aims to facilitate secure and private auctions by leveraging **zero-knowledge proofs (ZKPs)** to determine
 the highest bidder without revealing individual bid amounts. This ensures both privacy and fairness in the bidding
 process.
@@ -88,27 +89,23 @@ generation. The auction process follows four main phases:
 ### Challenges
 
 We used the [ecies](https://crates.io/crates/ecies) crate to encrypt and decrypt bids. However, the proving time and
-proof size were substantial: it took **6 minutes** to generate a proof for **2 bids**, resulting in a **21MB** proof
-size on a system with **64GB RAM** and an **i5-13500 CPU**. This large proof size couldn't be submitted to the Aligned
+proof size were substantial:it took **6 minutes** to generate a proof for **2 bids**, resulting in a **21MB** proof size
+on a system with **64GB RAM** and an **i5-13500 CPU**. This large proof size couldn't be submitted to the Aligned
 layer, so we compressed it, which further increased the proving time.
 
 To address this, we rebuilt the encryption scheme using SP1's patched `secp256k1` crate. This reduced the proving time
-by **half** and compressed the proof size to **1.5MB**. However, the proof couldn't be verified by SP1 due to the
+to **1 minute** and compressed the proof size to **1.5MB**. However, the proof couldn't be verified by SP1 due to the
 error `Core(Invalid shard proof: Out-of-domain evaluation mismatch on chip CPU)`. You can review the code in
 the [feat/ecies](https://github.com/sota-zk-labs/tahm-kench/tree/feat/ecies) branch.
 
 ### Future Plans
 
-SP1's performance limitations have led us to plan a custom circuit for the encryption scheme using `Gnark` to optimize
-proving time and proof size. Following this development, we aim to introduce additional auction types, such as **Unique
+Due to SP1's performance limitations, we plan to use `Gnark` as the tool to build a custom circuit optimized for our
+existing encryption scheme. Following this development, we aim to introduce additional auction types, such as **Unique
 Lowest Bid Auctions** and **Dutch Auctions**. We also plan to explore collaborations with other **dApps**, including
 **DeFi platforms**, to facilitate automatic asset management based on auction outcomes.
 
-### Demo
-
-You can watch our demo video [here](https://youtu.be/Mp-65Ou7t04).
-
-## Instructions
+## Execution instructions
 
 ### Requirements
 
@@ -158,7 +155,7 @@ directory.
 Finally, install the CLI from our source:
 
 ```bash
-make start-cli KEYSTORE_PATH=<KEYSTORE_PATH>
+make start-cli
 ```
 
 ### Usage
@@ -168,3 +165,9 @@ To view all available commands, run:
 ```bash
 tahken -h
 ```
+
+### Demo
+
+You can watch our demo video [here](https://youtu.be/Mp-65Ou7t04).
+
+## Project roadmap
