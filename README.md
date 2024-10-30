@@ -61,6 +61,8 @@ Key components of the project include:
 
 ### Workflow
 
+You can view our workflow demo video [here](https://www.youtube.com/watch?v=uM8o2fUbVP0).
+
 The core logic of **Tahm-Kech** operates on-chain, while off-chain processes handle the winner calculation and proof
 generation. The auction process follows four main phases:
 
