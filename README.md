@@ -7,15 +7,18 @@
 ## Introduction
 
 **Tahm-Kench** is a [**Sealed-Bid Auction**](https://www.investopedia.com/terms/s/sealed-bid-auction.asp) platform built
-using **SP1 zkVM** and **Aligned**. The project aims to facilitate secure and private auctions by leveraging
-**zero-knowledge proofs (ZKPs)** to determine the highest bidder without revealing individual bid amounts. This ensures
-both privacy and fairness in the bidding process.
+using [**SP1 zkVM**](https://docs.succinct.xyz/getting-started/install.html) and [**Aligned**](https://docs.alignedlayer.com/).
+The project aims to facilitate secure and private auctions by leveraging **zero-knowledge proofs (ZKPs)** to determine
+the highest bidder without revealing individual bid amounts. This ensures both privacy and fairness in the bidding
+process.
 
 Additionally, **Tahm-Kench** serves as a **reference model** for developers interested in building decentralized
 applications (dApps) using **Aligned** and **ZKPs**.
 
 ## Team :busts_in_silhouette:
-- **Team Members:** We are part of [SotaZK Labs](https://sotazk.org/), a team focused on pioneering zero-knowledge solutions to enhance
+
+- **Team Members:** We are part of [SotaZK Labs](https://sotazk.org/), a team focused on pioneering zero-knowledge
+  solutions to enhance
   security and privacy in the decentralized world.
 - **Number of Members**: 7
 - **Contact Information:**
@@ -23,12 +26,16 @@ applications (dApps) using **Aligned** and **ZKPs**.
     - **Email:** zk.steve.nguyen@gmail.com
     - **Telegram:** @zk_steve
 - **Prior Work/Research (Optional):**
-    - [ZKP Documentation](https://github.com/sota-zk-labs/zkp-documents): A repository dedicated to demystifying zero-knowledge proof
-      technology, including KZG, GKR, FRI, Plonk, DARK, Groth16, lattice-based commitment schemes, sum-check protocol, Nova, EIP-4844, etc.
-    - [ZKP Implementation](https://github.com/sota-zk-labs/zkp-implementation): Various ZKP protocols, including KZG, FRI, and Plonk.
-    - [Apstark](https://github.com/sota-zk-labs/apstark): A layer 2 ZK rollup blockchain built on the Aptos network using the Starknet
+    - [ZKP Documentation](https://github.com/sota-zk-labs/zkp-documents): A repository dedicated to demystifying
+      zero-knowledge proof
+      technology, including KZG, GKR, FRI, Plonk, DARK, Groth16, lattice-based commitment schemes, sum-check protocol,
+      Nova, EIP-4844, etc.
+    - [ZKP Implementation](https://github.com/sota-zk-labs/zkp-implementation): Various ZKP protocols, including KZG,
+      FRI, and Plonk.
+    - [Apstark](https://github.com/sota-zk-labs/apstark): A layer 2 ZK rollup blockchain built on the Aptos network
+      using the Starknet
       tech stack.
-      
+
 ## Overview
 
 ### Core idea

@@ -46,20 +46,6 @@ pub async fn get_winner_and_submit_proof(
 
     let proof = bincode::serialize(&proof).expect("Failed to serialize proof");
 
-    // let proof = include_bytes!("../proof").to_vec();
-    // let pub_input = include_bytes!("../pub_input").to_vec();
-    // println!("{:?}", hex::encode(&pub_input));
-    // let winner_addr = vec![1u8];
-    // let winner_amount = 0; // winner amount
-    // // dbg!(proof.len());
-    // let hash = [202u8, 36, 143, 90, 16, 137, 94, 111, 213, 3, 201, 186, 171, 70, 43, 164, 32, 123, 86, 217, 241, 250, 209, 191, 120, 60, 15, 217, 120, 122, 228, 86];
-    // let addr = [237u8, 228, 194, 180, 189, 190, 88, 7, 80, 169, 159, 1, 107, 10, 21, 129, 195, 128, 143, 163];
-    // let amount = 3u128;
-    // let g = encode(&[Token::FixedBytes(hash.to_vec()), Token::Address(Address::from(addr)), Token::Uint(Uint::from(amount))]);
-    // println!("{}", hex::encode(hash));
-    // println!("{}", hex::encode(addr));
-    // println!("{:?}", g);
-
     fs::write("proof", &proof).expect("Failed to write proof to file");
     fs::write("pub_input", &pub_input).expect("Failed to write pub_input to file");
     let verification_data = VerificationData {
@@ -187,8 +173,6 @@ pub fn flatten(vec: &[[u8; 32]]) -> Vec<u8> {
     }
     res
 }
-
-fn read_file() {}
 
 #[cfg(test)]
 mod tests {
