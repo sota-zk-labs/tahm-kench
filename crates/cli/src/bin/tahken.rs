@@ -47,6 +47,12 @@ enum Commands {
         time: u128,
         #[clap(short, long)]
         keystore_path: String,
+        #[arg(
+            short,
+            long,
+            default_value = "0xd6a367e96abd5872f0e39b9f5df0ed1cd125c41e"
+        )]
+        token_address: Address,
     },
     /// Get detail auctions
     GetAuction {
@@ -116,6 +122,7 @@ async fn main() -> Result<()> {
                 target_price,
                 time,
                 keystore_path,
+                token_address,
             } => {
                 let (signer, _wallet_address, _wallet) =
                     set_up_wallet(config.clone(), keystore_path).await;
@@ -124,6 +131,7 @@ async fn main() -> Result<()> {
                     signer,
                     config.contract_address,
                     &encryption_key,
+                    token_address,
                     name,
                     description,
                     nft_contract_address,
@@ -141,7 +149,7 @@ async fn main() -> Result<()> {
             } => {
                 let (signer, _wallet_address, _wallet) =
                     set_up_wallet(config.clone(), keystore_path).await;
-                let _ = get_auction(signer, config.contract_address, U256::from(auction_id))
+                get_auction(signer, config.contract_address, U256::from(auction_id))
                     .await
                     .unwrap_or_else(|_| panic!("Failed to get auction with id: {}", auction_id));
                 Ok(())
@@ -162,7 +170,6 @@ async fn main() -> Result<()> {
                 create_bid(
                     signer,
                     config.contract_address,
-                    config.token_address,
                     U256::from(auction_id),
                     price,
                 )

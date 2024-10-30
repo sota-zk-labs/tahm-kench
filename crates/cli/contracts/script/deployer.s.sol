@@ -9,12 +9,10 @@ import {MockNFT} from "../src/mocks/MockNFT.sol";
 contract DeployScript is Script {
     function setUp() public {}
 
-    function run(address _lockToken) external returns (address) {
+    function run() external returns (address) {
         vm.startBroadcast();
 
-        ZkAuction new_zk_auction = new ZkAuction(_lockToken);
-        MockToken new_mock_erc20 = new MockToken();
-        MockNFT new_mock_nft = new MockNFT();
+        ZkAuction new_zk_auction = new ZkAuction();
 
         vm.stopBroadcast();
 

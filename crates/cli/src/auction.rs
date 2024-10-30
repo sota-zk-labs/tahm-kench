@@ -1,6 +1,6 @@
 use aligned_sdk::core::types::Network;
 use aligned_sp1_prover::{AuctionData, Bidder};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::{TimeZone, Utc};
 use ecies::PublicKey;
 use ethers::abi::AbiDecode;
@@ -32,7 +32,8 @@ abigen!(zkAuctionContract, "./assets/ZkAuction.json");
 pub async fn create_new_auction(
     signer: EthSigner,
     auction_contract_address: Address,
-    pk_encryption: &PublicKey,
+    pbk_encryption: &PublicKey,
+    token_addr: Address,
     name: String,
     description: String,
     nft_contract_address: Address,
@@ -52,7 +53,8 @@ pub async fn create_new_auction(
     // Create Auction
     let zk_auction_contract = zkAuctionContract::new(auction_contract_address, signer.into());
     let contract_caller = zk_auction_contract.create_auction(
-        Bytes::from(pk_encryption.serialize()),
+        Bytes::from(pbk_encryption.serialize()),
+        token_addr,
         nft_contract_address,
         token_id,
         name,
@@ -66,7 +68,7 @@ pub async fn create_new_auction(
     println!("==========================================================================");
     let mut auction_id = U256::zero();
     for log in events {
-        if log.topics[0] == H256::from(keccak256("AuctionCreated(uint256,address)")) {
+        if log.topics[0] == H256::from(keccak256(b"AuctionCreated(uint256,address)")) {
             println!("Create auction successfully with:");
             println!("Owner: {:?}", Address::from(log.topics[2]));
             auction_id = U256::decode(log.topics[1])?;
@@ -100,15 +102,16 @@ pub async fn get_auction(
     signer: EthSigner,
     auction_contract_address: Address,
     auction_id: U256,
-) -> Result<(Address, Bytes, Asset, Winner, U256, U256, bool)> {
+) -> Result<(Address, Bytes, Address, Asset, Winner, U256, U256, bool)> {
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
-    let (owner, encryption_key, asset, winner, deposit_price, end_time, ended) =
+    let (owner, encryption_key, token_addr, asset, winner, deposit_price, end_time, ended) =
         contract.auctions(auction_id).call().await?;
     println!("==========================================================================");
     println!("Auction Details:");
     println!("Name: {}", asset.name);
     println!("Seller: {:?}", owner);
     println!("Seller's public encryption key: {:?}", encryption_key);
+    println!("Token address: {}", &token_addr);
     println!("Description: {}", asset.description);
     println!("Item:");
     println!("  Address of NFT Contract: {:?}", asset.nft_contract);
@@ -125,6 +128,7 @@ pub async fn get_auction(
     Ok((
         owner,
         encryption_key,
+        token_addr,
         asset,
         winner,
         deposit_price,
@@ -170,16 +174,14 @@ pub async fn get_total_auction(
 pub async fn create_bid(
     signer: EthSigner,
     auction_contract_address: Address,
-    token_address: Address,
     auction_id: U256,
     bid_price: u128,
 ) -> Result<()> {
     // let auction = get_auction(signer.clone(), auction_contract_address, auction_id).await?;
-    let (_, encryption_key, _, _, deposit_price, _, _) =
+    let (_, encryption_key, token_address, _, _, deposit_price, _, _) =
         get_auction(signer.clone(), auction_contract_address, auction_id).await?;
     if U256::from(bid_price) > deposit_price {
-        println!("You need bid with price < deposit price");
-        return Ok(());
+        return Err(anyhow!("You need bid with price < deposit price"));
     }
     // Approve token
     let erc20_contract = erc20Contract::new(token_address, signer.clone().into());
@@ -205,7 +207,7 @@ pub async fn create_bid(
     let events = receipt.logs;
     println!("==========================================================================");
     for log in events {
-        if log.topics[0] == H256::from(keccak256("NewBid(uint256,address,bytes)")) {
+        if log.topics[0] == H256::from(keccak256(b"NewBid(uint256,address,bytes)")) {
             println!("Create new bid successfully with:");
             println!("Bidder address: {:?}", Address::from(log.topics[2]));
             println!("Auction ID: {:?}", U256::decode(log.topics[1])?);
@@ -314,7 +316,7 @@ pub async fn reveal_winner(
     let events = receipt.logs;
     println!("==========================================================================");
     for log in events {
-        if log.topics[0] == H256::from(keccak256("AuctionEnded(uint256,address,uint128)")) {
+        if log.topics[0] == H256::from(keccak256(b"AuctionEnded(uint256,address,uint128)")) {
             println!("Reveal winner successfully with:");
             println!("Winner address: {:?}", Address::from(log.topics[2]));
             println!("Auction ID: {:?}", U256::decode(log.topics[1])?);

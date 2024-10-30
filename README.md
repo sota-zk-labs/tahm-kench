@@ -137,7 +137,7 @@ cd tahm-kench
 If you are the owner, execute the following commands:
 
 ```bash
-# Deposit $AMOUNT ETH to Aligned layer
+# Deposit $AMOUNT ETH to Aligned layer to verify the proof
 make deposit-to-aligned KEYSTORE_PATH=<KEYSTORE_PATH> AMOUNT=<AMOUNT>
 
 # Generate ELF file and public-private key pair
@@ -152,7 +152,7 @@ directory.
 Finally, install the CLI from our source:
 
 ```bash
-make start-cli
+make install
 ```
 
 ### Usage

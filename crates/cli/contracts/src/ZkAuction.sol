@@ -9,8 +9,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 contract ZkAuction is IERC721Receiver {
     using SafeERC20 for IERC20;
 
-    IERC20 public immutable lockToken; // The token to be locked
-
     // data for verifying batch inclusion
     error InvalidElf(bytes32 submittedElf);
     bytes32 public constant ELF_COMMITMENT = 0x01d6e3579da3e89108a88e4276227c6c75c656d51a5b6769e438ca1b19b40937;
@@ -20,6 +18,7 @@ contract ZkAuction is IERC721Receiver {
     struct Auction {
         address owner; // Owner of the auction
         bytes encryptionKey; // Owner's public key
+        IERC20 token; // Token used in the auction
         Asset asset; // Asset being auctioned
         Bid[] bids; // Array of bids placed on the auction
         Winner winner; // Winner of the auction
@@ -59,10 +58,6 @@ contract ZkAuction is IERC721Receiver {
     event NewBid(uint256 indexed auctionId, address indexed bidder, bytes encryptedPrice);
     event AuctionEnded(uint256 indexed auctionId, address indexed winner, uint128 price);
 
-    constructor(address _lockToken) {
-        lockToken = IERC20(_lockToken);
-    }
-
     modifier onlyOwner(uint256 auctionId) {
         Auction storage auction = auctions[auctionId];
         require(msg.sender == auction.owner, "You are not the owner");
@@ -77,6 +72,7 @@ contract ZkAuction is IERC721Receiver {
      */
     function createAuction(
         bytes memory _encryptionKey,
+        IERC20 _token,
         address _nftContract,
         uint256 _tokenId,
         string memory _assetName,
@@ -101,6 +97,7 @@ contract ZkAuction is IERC721Receiver {
         newAuction.depositPrice = _depositPrice;
         newAuction.endTime = block.timestamp + _duration; // Set auction end time
         newAuction.ended = false;
+        newAuction.token = _token;
 
         auctionsByOwner[msg.sender].push(newAuction);
 
@@ -128,7 +125,7 @@ contract ZkAuction is IERC721Receiver {
         // Bid
         auction.bids.push(Bid({bidder: msg.sender, encryptedPrice: _encryptedPrice}));
 
-        lockToken.safeTransferFrom(msg.sender, address(this), auction.depositPrice);
+        auction.token.safeTransferFrom(msg.sender, address(this), auction.depositPrice);
         emit NewBid(auctionId, msg.sender, _encryptedPrice);
     }
 
@@ -161,10 +158,10 @@ contract ZkAuction is IERC721Receiver {
         nftContract.safeTransferFrom(address(this), auction.winner.winner, auction.asset.tokenId);
         // Refund token
         if (auction.depositPrice > auction.winner.price) {
-            lockToken.safeTransfer(auction.winner.winner, auction.depositPrice - auction.winner.price);
+            auction.token.safeTransfer(auction.winner.winner, auction.depositPrice - auction.winner.price);
         }
         // Withdraw token
-        lockToken.safeTransfer(msg.sender, auction.winner.price);
+        auction.token.safeTransfer(msg.sender, auction.winner.price);
 
         emit AuctionEnded(auctionId, auction.winner.winner, auction.winner.price);
     }
@@ -174,7 +171,7 @@ contract ZkAuction is IERC721Receiver {
         require(hasDeposited[auctionId][msg.sender], "No tokens to withdraw");
         require(auction.ended, "Tokens are still locked");
         // Transfer tokens from this contract to the user
-        lockToken.safeTransfer(msg.sender, auction.depositPrice);
+        auction.token.safeTransfer(msg.sender, auction.depositPrice);
     }
 
     function _verifyProof(

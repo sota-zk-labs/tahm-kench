@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {Test, console} from "forge-std/Test.sol";
 import {ZkAuction} from "../src/ZkAuction.sol";
@@ -31,7 +32,7 @@ contract testZkAuction is Test {
         mock_nft = new MockNFT();
 
         // Deploy a new ZkAuction Contract instance
-        zk_auction = new ZkAuction(address(mock_token));
+        zk_auction = new ZkAuction();
 
         // Mint an NFT to the owner for testing
         vm.prank(owner);
@@ -46,7 +47,7 @@ contract testZkAuction is Test {
     function createAuction() public {
         vm.prank(owner);
         zk_auction.createAuction(
-            ownerPublicKey, address(mock_nft), tokenId_1, assetName, assetDescription, depositPrice, duration
+            ownerPublicKey, IERC20(address(mock_token)), address(mock_nft), tokenId_1, assetName, assetDescription, depositPrice, duration
         );
     }
 
@@ -70,7 +71,7 @@ contract testZkAuction is Test {
         assertEq(mock_nft.ownerOf(tokenId_1), address(zk_auction));
         assertEq(zk_auction.auctionCount(), 1);
 
-        (address address_owner, bytes memory pk,,, uint256 deposit_price, uint256 endTime, bool ended) =
+        (address address_owner, bytes memory pk,,,, uint256 deposit_price, uint256 endTime, bool ended) =
                             zk_auction.auctions(0);
         assertEq(address_owner, owner);
         assertEq(pk, ownerPublicKey);
@@ -82,14 +83,14 @@ contract testZkAuction is Test {
     function testCreateAuctionDepositPriceZero() public {
         vm.prank(owner);
         vm.expectRevert(bytes("Deposit price must be greater than zero"));
-        zk_auction.createAuction(ownerPublicKey, address(mock_nft), tokenId_1, assetName, assetDescription, 0, duration);
+        zk_auction.createAuction(ownerPublicKey, IERC20(address(mock_token)), address(mock_nft), tokenId_1, assetName, assetDescription, 0, duration);
     }
 
     function testCreateAuctionDurationZero() public {
         vm.prank(owner);
         vm.expectRevert(bytes("Duration must be greater than zero"));
         zk_auction.createAuction(
-            ownerPublicKey, address(mock_nft), tokenId_1, assetName, assetDescription, depositPrice, 0
+            ownerPublicKey, IERC20(address(mock_token)), address(mock_nft), tokenId_1, assetName, assetDescription, depositPrice, 0
         );
     }
 
@@ -97,7 +98,7 @@ contract testZkAuction is Test {
         vm.prank(bidder);
         vm.expectRevert(bytes("You must own the NFT to auction it"));
         zk_auction.createAuction(
-            ownerPublicKey, address(mock_nft), tokenId_1, assetName, assetDescription, depositPrice, duration
+            ownerPublicKey, IERC20(address(mock_token)), address(mock_nft), tokenId_1, assetName, assetDescription, depositPrice, duration
         );
     }
 
@@ -105,7 +106,7 @@ contract testZkAuction is Test {
         vm.prank(owner);
         vm.expectRevert(bytes("You need approve the NFT to contract"));
         zk_auction.createAuction(
-            ownerPublicKey, address(mock_nft), tokenId_2, assetName, assetDescription, depositPrice, duration
+            ownerPublicKey, IERC20(address(mock_token)), address(mock_nft), tokenId_2, assetName, assetDescription, depositPrice, duration
         );
     }
 
@@ -113,7 +114,7 @@ contract testZkAuction is Test {
     function testCreateBidAuctionEnded() public {
         createAuction();
 
-        (,,,,, uint256 endTime, bool ended) = zk_auction.auctions(0);
+        (,,,,,, uint256 endTime, bool ended) = zk_auction.auctions(0);
 
         assertTrue(block.timestamp < endTime);
         assertFalse(ended);
