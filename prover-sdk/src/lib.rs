@@ -151,12 +151,12 @@ pub async fn get_winner_and_submit_proof(
 }
 
 /// Encrypts the amount of a bidder using the public key of the owner
-/// 
-/// # Arguments 
-/// 
+///
+/// # Arguments
+///
 /// * `amount`: bid amount
 /// * `pbk`: public key of the owner
-/// 
+///
 /// returns: Vec<u8, Global> encrypted amount
 pub fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
     ecies::encrypt(&pbk.serialize(), &amount.to_be_bytes()).expect("failed to encrypt bidder data")
@@ -188,11 +188,11 @@ pub fn get_elf() -> Result<Vec<u8>> {
 }
 
 /// Flatten a 2D array into a 1D array
-/// 
-/// # Arguments 
-/// 
+///
+/// # Arguments
+///
 /// * `vec`: 2D array
-/// 
+///
 /// returns: Vec<u8, Global> Flatten array
 pub fn flatten(vec: &[[u8; 32]]) -> Vec<u8> {
     let mut res = vec![];

@@ -12,10 +12,10 @@ use ethers::signers::{LocalWallet, Signer};
 use home::home_dir;
 use prover_sdk::get_encryption_key;
 
-use crate::config::Config;
-use crate::controllers::auction::{
+use crate::auction::{
     create_bid, create_new_auction, erc20Contract, nftContract, reveal_winner, zkAuctionContract,
 };
+use crate::config::Config;
 
 #[tokio::test]
 async fn test_auction_service() {
@@ -42,6 +42,7 @@ async fn test_auction_service() {
     let new_token_id = auction_total + 1;
     let token_mint = U256::from(1000u128);
     println!("New token ID: {}", new_token_id);
+
     // let owner_address = Address::from_str("0xeDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap();
     // let _ = set_up_nft(
     //     signer.clone(),

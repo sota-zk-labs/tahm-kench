@@ -10,12 +10,11 @@ use ethers::prelude::*;
 use ethers::providers::Provider;
 use ethers::signers::{LocalWallet, Signer};
 use futures_util::StreamExt;
-use home::home_dir;
 use prover_sdk::get_encryption_key;
-use zk_auction::config::Config;
-use zk_auction::controllers::auction::{
+use zk_auction::auction::{
     create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
 };
+use zk_auction::config::Config;
 
 #[derive(Parser, Debug)]
 #[command(name = "tahken")]
@@ -28,6 +27,7 @@ struct Cli {
     #[clap(short, long, default_value = "config.toml")]
     config_path: String,
 }
+
 #[derive(Subcommand, Clone, Debug, PartialEq)]
 enum Commands {
     /// Print current version
@@ -118,7 +118,8 @@ async fn main() -> Result<()> {
                 time,
                 keystore_path,
             } => {
-                let (signer, wallet_address, wallet) = set_up_wallet(config.clone(), keystore_path).await;
+                let (signer, wallet_address, wallet) =
+                    set_up_wallet(config.clone(), keystore_path).await;
                 let encryption_key = get_encryption_key()?;
                 let _ = create_new_auction(
                     signer,
@@ -139,7 +140,8 @@ async fn main() -> Result<()> {
                 auction_id,
                 keystore_path,
             } => {
-                let (signer, wallet_address, wallet) = set_up_wallet(config.clone(), keystore_path).await;
+                let (signer, wallet_address, wallet) =
+                    set_up_wallet(config.clone(), keystore_path).await;
                 let _ = get_auction(signer, config.contract_address, U256::from(auction_id))
                     .await
                     .unwrap_or_else(|_| panic!("Failed to get auction with id: {}", auction_id));

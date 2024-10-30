@@ -1,1 +1,1 @@
-pub mod test_auction_service;
+pub mod test_auction;
