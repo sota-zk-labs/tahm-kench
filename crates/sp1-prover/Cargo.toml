@@ -9,7 +9,7 @@ ecies = { version = "0.2.6", default-features = false, features = [
   "std",
 ] }
 serde = "1.0.210"
-sp1-zkvm = { git = "https://github.com/succinctlabs/sp1.git", rev = "v1.0.8-testnet" }
+sp1-zkvm = "3.0.0"
 tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "patch-v2.0.2", features = [
   "keccak",
 ] }

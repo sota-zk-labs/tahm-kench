@@ -5,15 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {ISP1Verifier} from "sp1-contracts/src/ISP1Verifier.sol";
 
 contract ZkAuction is IERC721Receiver {
     using SafeERC20 for IERC20;
 
-    // data for verifying batch inclusion
-    error InvalidElf(bytes32 submittedElf);
-    bytes32 public constant ELF_COMMITMENT = 0x1751d5d4ef537625091e623bbfd7cc457b0503daa18d06b59d5d0f13d38fdb5f;
-    address public constant ALIGNED_SERVICE_MANAGER = 0x58F280BeBE9B34c9939C3C39e0890C81f163B623;
-    address public constant ALIGNED_PAYMENT_SERVICE_ADDR = 0x815aeCA64a974297942D2Bbf034ABEe22a38A003;
+    // Data for verifying proof
+    bytes32 public constant VERIFICATION_KEY = 0x00a31842a3c42bd45cd90ae20a1848eb2caeb0283bfbd43c0acc0a19084e727c;
+    ISP1Verifier public constant SP1_VERIFIER = ISP1Verifier(0x3B6041173B80E77f038f3F2C0f9744f04837185e);
 
     struct Auction {
         address owner; // Owner of the auction
@@ -55,15 +54,22 @@ contract ZkAuction is IERC721Receiver {
 
     // Events
     event AuctionCreated(uint256 indexed auctionId, address indexed owner);
-    event NewBid(uint256 indexed auctionId, address indexed bidder, bytes encryptedPrice);
-    event AuctionEnded(uint256 indexed auctionId, address indexed winner, uint128 price);
+    event NewBid(
+        uint256 indexed auctionId,
+        address indexed bidder,
+        bytes encryptedPrice
+    );
+    event AuctionEnded(
+        uint256 indexed auctionId,
+        address indexed winner,
+        uint128 price
+    );
 
     modifier onlyOwner(uint256 auctionId) {
         Auction storage auction = auctions[auctionId];
         require(msg.sender == auction.owner, "You are not the owner");
         _;
     }
-
 
     // Function to create a new auction
     /**
@@ -84,8 +90,14 @@ contract ZkAuction is IERC721Receiver {
         require(_duration > 0, "Duration must be greater than zero");
 
         IERC721 nftContract = IERC721(_nftContract);
-        require(nftContract.ownerOf(_tokenId) == msg.sender, "You must own the NFT to auction it");
-        require(nftContract.getApproved(_tokenId) == address(this), "You need approve the NFT to contract");
+        require(
+            nftContract.ownerOf(_tokenId) == msg.sender,
+            "You must own the NFT to auction it"
+        );
+        require(
+            nftContract.getApproved(_tokenId) == address(this),
+            "You need approve the NFT to contract"
+        );
 
         // Create auction
         auctionCount++;
@@ -93,7 +105,12 @@ contract ZkAuction is IERC721Receiver {
 
         newAuction.owner = msg.sender;
         newAuction.encryptionKey = _encryptionKey;
-        newAuction.asset = Asset(_assetName, _assetDescription, _nftContract, _tokenId);
+        newAuction.asset = Asset(
+            _assetName,
+            _assetDescription,
+            _nftContract,
+            _tokenId
+        );
         newAuction.depositPrice = _depositPrice;
         newAuction.endTime = block.timestamp + _duration; // Set auction end time
         newAuction.ended = false;
@@ -123,9 +140,15 @@ contract ZkAuction is IERC721Receiver {
         // Update the state to indicate that the user has deposited
         hasDeposited[auctionId][msg.sender] = true;
         // Bid
-        auction.bids.push(Bid({bidder: msg.sender, encryptedPrice: _encryptedPrice}));
+        auction.bids.push(
+            Bid({bidder: msg.sender, encryptedPrice: _encryptedPrice})
+        );
 
-        auction.token.safeTransferFrom(msg.sender, address(this), auction.depositPrice);
+        auction.token.safeTransferFrom(
+            msg.sender,
+            address(this),
+            auction.depositPrice
+        );
         emit NewBid(auctionId, msg.sender, _encryptedPrice);
     }
 
@@ -134,7 +157,10 @@ contract ZkAuction is IERC721Receiver {
      * @dev Uses auctionId to get list bidders.
      */
     function getBids(uint256 auctionId) public view returns (Bid[] memory) {
-        require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet");
+        require(
+            block.timestamp >= auctions[auctionId].endTime,
+            "Auction has not ended yet"
+        );
         require(!auctions[auctionId].ended, "Auction has ended");
         return auctions[auctionId].bids;
     }
@@ -143,27 +169,49 @@ contract ZkAuction is IERC721Receiver {
      * @notice Reveals the winner after the auction ends.
      * @dev Uses a ZK-proof to reveal the highest valid bid.
      */
-    function finalizeAuction(uint256 auctionId, Winner memory _winner, bytes memory proof) public onlyOwner(auctionId) {
+    function finalizeAuction(
+        uint256 auctionId,
+        Winner memory _winner,
+        bytes calldata publicValues,
+        bytes memory proof
+    ) public onlyOwner(auctionId) {
         Auction storage auction = auctions[auctionId];
         require(auction.owner == msg.sender, "You need owner of auction");
-        require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet");
+        require(
+            block.timestamp >= auctions[auctionId].endTime,
+            "Auction has not ended yet"
+        );
         require(!auction.ended, "Auction has ended");
-        _verifyProof(_winner, auctionId, proof);
-        require(_winner.price <= auction.depositPrice, "Winner has more bid price than deposit price");
+        _verifyProof(_winner, auctionId, publicValues, proof);
+        require(
+            _winner.price <= auction.depositPrice,
+            "Winner has more bid price than deposit price"
+        );
         // Set winner and status auction
         auction.winner = _winner;
         auction.ended = true;
         // Send nft
         IERC721 nftContract = IERC721(auction.asset.nftContract);
-        nftContract.safeTransferFrom(address(this), auction.winner.winner, auction.asset.tokenId);
+        nftContract.safeTransferFrom(
+            address(this),
+            auction.winner.winner,
+            auction.asset.tokenId
+        );
         // Refund token
         if (auction.depositPrice > auction.winner.price) {
-            auction.token.safeTransfer(auction.winner.winner, auction.depositPrice - auction.winner.price);
+            auction.token.safeTransfer(
+                auction.winner.winner,
+                auction.depositPrice - auction.winner.price
+            );
         }
         // Withdraw token
         auction.token.safeTransfer(msg.sender, auction.winner.price);
 
-        emit AuctionEnded(auctionId, auction.winner.winner, auction.winner.price);
+        emit AuctionEnded(
+            auctionId,
+            auction.winner.winner,
+            auction.winner.price
+        );
     }
 
     function withdraw(uint256 auctionId) public {
@@ -177,91 +225,35 @@ contract ZkAuction is IERC721Receiver {
     function _verifyProof(
         Winner memory winner,
         uint256 auctionId,
-        bytes memory verifiedProofData
+        bytes calldata publicValues,
+        bytes memory proof
     ) internal view {
         (
-            bytes memory publicInput,
-            bytes32 proofCommitment,
-            bytes32 pubInputCommitment,
-            bytes32 provingSystemAuxDataCommitment,
-            bytes20 proofGeneratorAddr,
-            bytes32 batchMerkleRoot,
-            bytes memory merkleProof,
-            uint256 verificationDataBatchIndex
-        ) = abi.decode(verifiedProofData, (bytes, bytes32, bytes32, bytes32, bytes20, bytes32, bytes, uint256));
-        if (ELF_COMMITMENT != provingSystemAuxDataCommitment) {
-            revert InvalidElf(provingSystemAuxDataCommitment);
-        }
+            bytes32 auctionHash,
+            address winner_addr,
+            uint128 winner_price
+        ) = abi.decode(publicValues, (bytes32, address, uint128));
+
+        require(winner_addr == winner.winner, "Winner address in proof does not match");
+        require(winner_price == winner.price, "Winner price in proof does not match");
         require(
-            address(proofGeneratorAddr) == msg.sender,
-            "proofGeneratorAddr does not match"
+            calculateAuctionHash(auctionId) == auctionHash,
+            "Auction hash does not match"
         );
-        require(
-            pubInputCommitment == keccak256(publicInput),
-            "Invalid public input"
-        );
-
-        (bytes32 auctionHash, address winner_addr, uint128 winner_price) = decodePublicInput(publicInput);
-
-        require(winner_addr == winner.winner, "Winner in proof does not match");
-        require(winner_price == winner.price, "Winner in proof does not match");
-        require(calculateAuctionHash(auctionId) == auctionHash, "Auction hash does not match");
-
-        (
-            bool callWasSuccessful,
-            bytes memory proofIsIncluded
-        ) = ALIGNED_SERVICE_MANAGER.staticcall(
-            abi.encodeWithSignature(
-                "verifyBatchInclusion(bytes32,bytes32,bytes32,bytes20,bytes32,bytes,uint256,address)",
-                proofCommitment,
-                pubInputCommitment,
-                provingSystemAuxDataCommitment,
-                proofGeneratorAddr,
-                batchMerkleRoot,
-                merkleProof,
-                verificationDataBatchIndex,
-                ALIGNED_PAYMENT_SERVICE_ADDR
-            )
-        );
-
-        require(callWasSuccessful, "static_call failed");
-
-        bool proofIsIncludedBool = abi.decode(proofIsIncluded, (bool));
-        require(proofIsIncludedBool, "proof not included in batch");
+        SP1_VERIFIER.verifyProof(VERIFICATION_KEY, publicValues, proof);
     }
 
-    function calculateAuctionHash(uint256 auctionId) view internal returns (bytes32) {
+    function calculateAuctionHash(uint256 auctionId) internal view returns (bytes32) {
         Bid[] memory bids = auctions[auctionId].bids;
         bytes memory hashInput = abi.encodePacked(auctionId);
         for (uint256 i = 0; i < bids.length; ++i) {
-            hashInput = abi.encodePacked(hashInput, bids[i].bidder, bids[i].encryptedPrice);
+            hashInput = abi.encodePacked(
+                hashInput,
+                bids[i].bidder,
+                bids[i].encryptedPrice
+            );
         }
         return keccak256(hashInput);
-    }
-
-    function decodePublicInput(bytes memory data) internal pure returns (bytes32 auctionHash, address winner_addr, uint128 winner_price) {
-        auctionHash = bytes32(slice(data, 0, 32));
-        winner_addr = address(bytes20(slice(data, 32 + 8, 20)));
-        winner_price = uint128(bytes16(reverse(slice(data, 32 + 8 + 20, 16))));
-    }
-
-    function slice(bytes memory data, uint256 start, uint256 length) internal pure returns (bytes memory) {
-        require(start + length <= data.length, "Slice out of bounds");
-
-        bytes memory result = new bytes(length);
-        for (uint256 i = 0; i < length; i++) {
-            result[i] = data[start + i];
-        }
-
-        return result;
-    }
-
-    function reverse(bytes memory data) public pure returns (bytes memory) {
-        bytes memory result = new bytes(data.length);
-        for (uint256 i = 0; i < data.length; i++) {
-            result[i] = data[data.length - 1 - i];
-        }
-        return result;
     }
 
     function onERC721Received(
