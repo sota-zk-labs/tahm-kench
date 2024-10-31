@@ -140,7 +140,10 @@ async fn main() -> Result<()> {
                     U256::from(time),
                 )
                 .await
-                .unwrap_or_else(|_| panic!("Failed to create auction"));
+                .unwrap_or_else(|e| {
+                    println!("{}", e);
+                    panic!("Failed to create auction");
+                });
                 Ok(())
             }
             Commands::GetAuction {
@@ -151,14 +154,20 @@ async fn main() -> Result<()> {
                     set_up_wallet(config.clone(), keystore_path).await;
                 get_auction(signer, config.contract_address, U256::from(auction_id))
                     .await
-                    .unwrap_or_else(|_| panic!("Failed to get auction with id: {}", auction_id));
+                    .unwrap_or_else(|e| {
+                        println!("{}", e);
+                        panic!("Failed to get auction with id: {}", auction_id);
+                    });
                 Ok(())
             }
             Commands::ListAuctions { keystore_path } => {
                 let (signer, _, _) = set_up_wallet(config.clone(), keystore_path).await;
                 get_total_auction(signer, config.contract_address)
                     .await
-                    .unwrap_or_else(|_| panic!("Failed to get total auction"));
+                    .unwrap_or_else(|e| {
+                        println!("{}", e);
+                        panic!("Failed to get total auction");
+                    });
                 Ok(())
             }
             Commands::Bid {
@@ -174,7 +183,10 @@ async fn main() -> Result<()> {
                     price,
                 )
                 .await
-                .unwrap_or_else(|_| panic!("Failed to bid auction with id: {}", auction_id));
+                .unwrap_or_else(|e| {
+                    println!("{}", e);
+                    panic!("Failed to bid auction with id: {}", auction_id);
+                });
                 Ok(())
             }
             Commands::RevealWinner {
@@ -182,7 +194,7 @@ async fn main() -> Result<()> {
                 keystore_path,
             } => {
                 let (signer, _, wallet) = set_up_wallet(config.clone(), keystore_path).await;
-                match reveal_winner(
+                reveal_winner(
                     signer,
                     config.contract_address,
                     U256::from(auction_id),
@@ -192,14 +204,11 @@ async fn main() -> Result<()> {
                     aligned_batcher_url,
                 )
                 .await
-                {
-                    Ok(_) => Ok(()),
-                    Err(e) => {
-                        println!("Failed to reveal winner of auction with id: {}", auction_id);
-                        println!("{}", e);
-                        Err(e)
-                    }
-                }
+                .unwrap_or_else(|e| {
+                    println!("{}", e);
+                    panic!("Failed to reveal winner of auction with id: {}", auction_id);
+                });
+                Ok(())
             }
             Commands::Withdraw {
                 auction_id,
@@ -208,8 +217,9 @@ async fn main() -> Result<()> {
                 let (signer, _, _) = set_up_wallet(config.clone(), keystore_path).await;
                 withdraw(signer, config.contract_address, U256::from(auction_id))
                     .await
-                    .unwrap_or_else(|_| {
-                        panic!("Failed to withdraw from auction with id: {}", auction_id)
+                    .unwrap_or_else(|e| {
+                        println!("{}", e);
+                        panic!("Failed to withdraw from auction with id: {}", auction_id);
                     });
                 Ok(())
             }
