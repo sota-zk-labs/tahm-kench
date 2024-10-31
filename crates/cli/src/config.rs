@@ -5,14 +5,12 @@ use serde::Deserialize;
 #[derive(Deserialize, Debug, Clone)]
 pub struct ChainConfig {
     pub rpc_url: String,
-    pub network: String,
-    pub aligned_batcher_url: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub chain: ChainConfig,
-    pub contract_address: H160
+    pub contract_address: H160,
 }
 
 impl Config {

@@ -35,3 +35,4 @@ serde_json = "1.0.128"
 thiserror = "1.0.63"
 tokio = { version = "1.39.2", features = ["rt", "rt-multi-thread", "macros"] }
 toml = "0.8.19"
+eth-keystore = "0.5.0"

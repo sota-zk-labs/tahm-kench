@@ -1,4 +1,3 @@
-use aligned_sdk::core::types::Network;
 use aligned_sp1_prover::{AuctionData, Bidder};
 use anyhow::{anyhow, Context, Result};
 use chrono::{TimeZone, Utc};
@@ -8,7 +7,7 @@ use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
 use ethers::types::{Address, Bytes, U256};
 use ethers::utils::keccak256;
-use prover_sdk::{encrypt_bidder_amount, get_winner_and_submit_proof};
+use prover_sdk::{encrypt_bidder_amount, find_winner};
 
 use crate::types::EthSigner;
 
@@ -272,11 +271,8 @@ pub async fn get_list_bids(
 pub async fn reveal_winner(
     signer: EthSigner,
     auction_contract_address: Address,
+    wallet_private_key: &SigningKey,
     auction_id: U256,
-    wallet: Wallet<SigningKey>,
-    rpc_url: &str,
-    network: Network,
-    batcher_url: &str,
 ) -> Result<()> {
     // Get list bids
     let bidders = get_list_bids(signer.clone(), auction_contract_address, auction_id)
@@ -289,15 +285,12 @@ pub async fn reveal_winner(
     //Send to SP1
     let mut auc_id = [0; 32];
     auction_id.to_big_endian(&mut auc_id);
-    let (winner_addr, winner_amount, verified_proof) = get_winner_and_submit_proof(
-        wallet,
+    let (winner_addr, winner_amount, public_input, proof) = find_winner(
         &AuctionData {
             bidders,
             id: auc_id.to_vec(),
         },
-        rpc_url,
-        network,
-        batcher_url,
+        wallet_private_key,
     )
     .await?;
 
@@ -309,7 +302,8 @@ pub async fn reveal_winner(
             winner: winner_addr,
             price: winner_amount,
         },
-        Bytes::from(verified_proof),
+        public_input,
+        proof,
     );
     let tx = contract_caller.send().await?;
     let receipt = tx.await?.unwrap();
