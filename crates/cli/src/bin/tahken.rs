@@ -9,10 +9,8 @@ use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
 use ethers::providers::Provider;
 use ethers::signers::{LocalWallet, Signer};
-use prover_sdk::get_encryption_key;
-use zk_auction::auction::{
-    create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
-};
+use prover_sdk::{find_winner, get_encryption_key, read_file_as_bytes, submit_proof_to_aligned};
+use zk_auction::auction::{create_bid, create_new_auction, get_auction, get_auction_data, get_total_auction, reveal_winner, submit_proof_to_ether, withdraw, Winner};
 use zk_auction::config::Config;
 
 #[derive(Parser, Debug)]
@@ -70,6 +68,25 @@ enum Commands {
     Bid {
         #[arg(short, long)]
         price: u128,
+        #[arg(short, long)]
+        auction_id: u128,
+        #[clap(short, long)]
+        keystore_path: String,
+    },
+    // Find winner
+    FindWinner {
+        #[arg(short, long)]
+        auction_id: u128,
+        #[clap(short, long)]
+        keystore_path: String,
+    },
+    // Submit proof to Aligned
+    SubmitToAligned {
+        #[clap(short, long)]
+        keystore_path: String,
+    },
+    // Submit verified proof to Ether
+    SubmitToEth {
         #[arg(short, long)]
         auction_id: u128,
         #[clap(short, long)]
@@ -221,6 +238,51 @@ async fn main() -> Result<()> {
                         println!("{}", e);
                         panic!("Failed to withdraw from auction with id: {}", auction_id);
                     });
+                Ok(())
+            }
+            Commands::FindWinner {
+                auction_id,
+                keystore_path,
+            } => {
+                let (signer, _, _) = set_up_wallet(config.clone(), keystore_path).await;
+                find_winner(
+                    &get_auction_data(signer, config.contract_address, U256::from(auction_id))
+                        .await?,
+                )
+                .await
+                .unwrap_or_else(|e| {
+                    println!("{}", e);
+                    panic!("Failed to find winner from auction with id: {}", auction_id);
+                });
+                Ok(())
+            }
+            Commands::SubmitToAligned { keystore_path } => {
+                let (_signer, _, wallet) = set_up_wallet(config.clone(), keystore_path).await;
+                submit_proof_to_aligned(wallet, rpc_url, network, aligned_batcher_url)
+                    .await
+                    .unwrap_or_else(|e| {
+                        println!("{}", e);
+                        panic!("Failed to submit proof to Aligned");
+                    });
+                Ok(())
+            }
+            Commands::SubmitToEth { auction_id, keystore_path } => {
+                let (signer, _, _) = set_up_wallet(config.clone(), keystore_path).await;
+                submit_proof_to_ether(
+                    signer,
+                    config.contract_address,
+                    U256::from(auction_id),
+                    Winner {
+                        winner: Address::from_slice(&read_file_as_bytes("winner_addr")?),
+                        price: u128::from_be_bytes(read_file_as_bytes("winner_addr")?.try_into().unwrap()),
+                    },
+                    read_file_as_bytes("verified_proof")?,
+                )
+                .await
+                .unwrap_or_else(|e| {
+                    println!("{}", e);
+                    panic!("Failed to submit proof to Ether");
+                });
                 Ok(())
             }
         },

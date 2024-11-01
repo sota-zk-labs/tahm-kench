@@ -63,8 +63,6 @@ mod tests {
 
     use crate::{calc_auction_hash, AuctionData, Bidder};
 
-    const PVK_HEX: &str = include_str!("../private_encryption_key");
-
     #[test]
     fn test_decrypt_data() {
         let (pvk, pbk) = get_key();
@@ -139,8 +137,10 @@ mod tests {
     }
 
     fn get_key() -> (SecretKey, PublicKey) {
-        let pvk = SecretKey::parse_slice(&hex::decode(PVK_HEX).unwrap())
-            .expect("fail to read private key");
+        let pvk = SecretKey::parse_slice(
+            &hex::decode(&fs::read_to_string("private_encryption_key").unwrap()).unwrap(),
+        )
+        .expect("fail to read private key");
         (pvk, PublicKey::from_secret_key(&pvk))
     }
 }

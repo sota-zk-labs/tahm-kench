@@ -3,7 +3,7 @@ extern crate core;
 use std::fs;
 use std::fs::File;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use aligned_sdk::core::types::{Network, PriceEstimate, ProvingSystemId, VerificationData};
 use aligned_sdk::sdk::{estimate_fee, get_next_nonce, submit_and_wait_verification};
@@ -36,8 +36,21 @@ pub async fn get_winner_and_submit_proof(
     network: Network,
     batcher_url: &str,
 ) -> Result<(Address, u128, Vec<u8>)> {
+    let (winner_addr, winner_amount) = find_winner(auction_data).await?;
+    let verified_proof = submit_proof_to_aligned(wallet, rpc_url, network, batcher_url).await?;
+    Ok((winner_addr, winner_amount, verified_proof))
+}
+
+/// Find the winner of the auction, write proof and public input from SP1 to file
+/// 
+/// # Arguments 
+/// 
+/// * `auction_data`: Auction data
+/// 
+/// returns: Result<(H160, u128), Error> (winner address, winner amount)
+pub async fn find_winner(auction_data: &AuctionData) -> Result<(Address, u128)> {
     println!("Creating proof...");
-    
+
     let mut stdin = SP1Stdin::new();
     stdin.write(auction_data);
     stdin.write(&get_private_encryption_key()?.serialize().to_vec());
@@ -57,8 +70,32 @@ pub async fn get_winner_and_submit_proof(
 
     let proof = bincode::serialize(&proof).expect("Failed to serialize proof");
 
+    fs::write("winner_addr", winner_addr.as_bytes()).expect("Failed to write winner address to file");
+    fs::write("winner_amount", winner_amount.to_be_bytes()).expect("Failed to write winner amount to file");
     fs::write("proof", &proof).expect("Failed to write proof to file");
     fs::write("pub_input", &pub_input).expect("Failed to write pub_input to file");
+
+    Ok((winner_addr, winner_amount))
+}
+
+/// Read proof and public input from file and submit theme to Aligned to verify
+/// 
+/// # Arguments 
+///
+/// * `wallet`: wallet of the owner
+/// * `rpc_url`: rpc url of the network
+/// * `network`: network supported by Aligned
+/// * `batcher_url`: Aligned batcher URL
+/// 
+/// returns: Result<Vec<u8, Global>, Error> encoded verified proof by Aligned
+pub async fn submit_proof_to_aligned(
+    wallet: Wallet<SigningKey>,
+    rpc_url: &str,
+    network: Network,
+    batcher_url: &str
+) -> Result<Vec<u8>> {
+    let proof = read_file_as_bytes("proof")?;
+    let pub_input = read_file_as_bytes("pub_input")?;
     let verification_data = VerificationData {
         proving_system: ProvingSystemId::SP1,
         proof,
@@ -147,8 +184,7 @@ pub async fn get_winner_and_submit_proof(
     ]);
 
     fs::write("verified_proof", &verified_proof).expect("Failed to write verified proof to file");
-
-    Ok((winner_addr, winner_amount, verified_proof))
+    Ok(verified_proof.to_vec())
 }
 
 /// Encrypts the amount of a bidder using the public key of the owner
@@ -185,13 +221,10 @@ pub fn get_private_encryption_key() -> Result<SecretKey> {
 
 /// Get the ELF file that was compiled with the SP1 prover
 pub fn get_elf() -> Result<Vec<u8>> {
-    let mut buffer = Vec::new();
-    File::open(
+    read_file_as_bytes(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../sp1-prover//elf/riscv32im-succinct-zkvm-elf"),
-    )?
-    .read_to_end(&mut buffer)?;
-    Ok(buffer)
+    )
 }
 
 /// Flatten a 2D array into a 1D array
@@ -207,6 +240,12 @@ pub fn flatten(vec: &[[u8; 32]]) -> Vec<u8> {
         res.extend_from_slice(v);
     }
     res
+}
+
+pub fn read_file_as_bytes(path: impl AsRef<Path>) -> Result<Vec<u8>> {
+    let mut buffer = Vec::new();
+    File::open(path)?.read_to_end(&mut buffer)?;
+    Ok(buffer)
 }
 
 #[cfg(test)]

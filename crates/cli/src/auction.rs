@@ -278,23 +278,9 @@ pub async fn reveal_winner(
     network: Network,
     batcher_url: &str,
 ) -> Result<()> {
-    // Get list bids
-    let bidders = get_list_bids(signer.clone(), auction_contract_address, auction_id)
-        .await
-        .context(format!(
-            "Failed to get list bids from auction with id: {}",
-            auction_id
-        ))?;
-    println!("bidders: {:?}", bidders);
-    //Send to SP1
-    let mut auc_id = [0; 32];
-    auction_id.to_big_endian(&mut auc_id);
     let (winner_addr, winner_amount, verified_proof) = get_winner_and_submit_proof(
         wallet,
-        &AuctionData {
-            bidders,
-            id: auc_id.to_vec(),
-        },
+        &get_auction_data(signer.clone(), auction_contract_address, auction_id).await?,
         rpc_url,
         network,
         batcher_url,
@@ -302,29 +288,10 @@ pub async fn reveal_winner(
     .await?;
 
     // Submit proof to SMC
-    let contract = zkAuctionContract::new(auction_contract_address, signer.into());
-    let contract_caller = contract.finalize_auction(
-        auction_id,
-        Winner {
-            winner: winner_addr,
-            price: winner_amount,
-        },
-        Bytes::from(verified_proof),
-    );
-    let tx = contract_caller.send().await?;
-    let receipt = tx.await?.unwrap();
-    let events = receipt.logs;
-    println!("==========================================================================");
-    for log in events {
-        if log.topics[0] == H256::from(keccak256(b"AuctionEnded(uint256,address,uint128)")) {
-            println!("Reveal winner successfully with:");
-            println!("Winner address: {:?}", Address::from(log.topics[2]));
-            println!("Auction ID: {:?}", U256::decode(log.topics[1])?);
-            println!("Block: {:?}", log.block_number.unwrap());
-            println!("Tx: {:?}", log.transaction_hash.unwrap());
-        }
-    }
-    Ok(())
+    submit_proof_to_ether(signer, auction_contract_address, auction_id, Winner {
+        winner: winner_addr,
+        price: winner_amount,
+    }, verified_proof).await
 }
 
 /// Withdraws the deposit for a specific auction, if applicable, and completes the withdrawal process on the contract.
@@ -352,5 +319,65 @@ pub async fn withdraw(
         "Withdraw deposit successfully with transaction_hash : {:?}",
         tx_hash
     );
+    Ok(())
+}
+
+/// Get auction data from a given id
+///
+/// # Arguments
+///
+/// * `signer` - A `SignerMiddleware` configured for interacting with the blockchain and signing transactions.
+/// * `auction_contract_address` - The contract address of the auction platform.
+/// * `auction_id` - ID of the auction.
+///
+/// returns: Result<AuctionData, Error>
+pub async fn get_auction_data(
+    signer: EthSigner,
+    auction_contract_address: Address,
+    auction_id: U256,
+) -> Result<AuctionData> {
+    // Get list bids
+    let bidders = get_list_bids(signer, auction_contract_address, auction_id)
+        .await
+        .context(format!(
+            "Failed to get list bids from auction with id: {}",
+            auction_id
+        ))?;
+    println!("bidders: {:?}", bidders);
+    //Send to SP1
+    let mut auc_id = [0; 32];
+    auction_id.to_big_endian(&mut auc_id);
+    Ok(AuctionData {
+        bidders,
+        id: auc_id.to_vec(),
+    })
+}
+
+pub async fn submit_proof_to_ether(
+    signer: EthSigner,
+    auction_contract_address: Address,
+    auction_id: U256,
+    winner: Winner,
+    verified_proof: Vec<u8>,
+) -> Result<()> {
+    let contract = zkAuctionContract::new(auction_contract_address, signer.into());
+    let contract_caller = contract.finalize_auction(
+        auction_id,
+        winner,
+        Bytes::from(verified_proof),
+    );
+    let tx = contract_caller.send().await?;
+    let receipt = tx.await?.unwrap();
+    let events = receipt.logs;
+    println!("==========================================================================");
+    for log in events {
+        if log.topics[0] == H256::from(keccak256(b"AuctionEnded(uint256,address,uint128)")) {
+            println!("Reveal winner successfully with:");
+            println!("Winner address: {:?}", Address::from(log.topics[2]));
+            println!("Auction ID: {:?}", U256::decode(log.topics[1])?);
+            println!("Block: {:?}", log.block_number.unwrap());
+            println!("Tx: {:?}", log.transaction_hash.unwrap());
+        }
+    }
     Ok(())
 }
