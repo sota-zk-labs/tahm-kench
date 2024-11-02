@@ -24,5 +24,4 @@ pvk
 pbk
 encryption_key
 private_encryption_key
-crates/sp1-prover/elf
 crates/cli/contracts/.env

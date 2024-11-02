@@ -123,6 +123,7 @@ First, create a local keystore using the `cast` tool. If you already have one, y
 
 ```bash
 cast wallet import --private-key <YOUR_PRIVATE_KEY> <WALLET_NAME>
+# Example: cast wallet import --private-key 0x... wallet
 ```
 
 2. **Clone the Repository**
@@ -141,9 +142,10 @@ If you are the owner, execute the following commands:
 ```bash
 # Deposit $AMOUNT ETH to Aligned layer to verify the proof
 make deposit-to-aligned KEYSTORE_PATH=<KEYSTORE_PATH> AMOUNT=<AMOUNT>
+# Example: make deposit-to-aligned KEYSTORE_PATH=~/.foundry/keystores/wallet AMOUNT=0.001
 
-# Generate ELF file and public-private key pair
-cd crates/sp1-prover && make gen-key && make elf-commit
+# Generate a public-private key pair
+cd crates/sp1-prover && make gen-key
 ```
 
 After this, you should find the `elf` folder, `encryption_key` and `private_encryption_key` in the `sp1-prover`
