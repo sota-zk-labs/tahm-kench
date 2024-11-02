@@ -13,7 +13,10 @@ pub fn main() {
 
     // let (winner_addr, winner_amount) = (vec![0u128], 0u128);
     let (winner_addr, winner_amount) = find_winner(&auction_data, pvk);
-    sp1_zkvm::io::commit(&calc_auction_hash(&auction_data));
+    println!("cycle-tracker-start: hash-auction-data");
+    let hash_data = calc_auction_hash(&auction_data);
+    println!("cycle-tracker-end: hash-auction-data");
+    sp1_zkvm::io::commit(&hash_data);
     sp1_zkvm::io::commit(&winner_addr);
     sp1_zkvm::io::commit(&winner_amount);
 }

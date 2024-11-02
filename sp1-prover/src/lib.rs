@@ -10,18 +10,20 @@ pub struct AuctionData {
     pub id: Vec<u8>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Bidder {
     pub encrypted_amount: Vec<u8>,
     pub address: Vec<u8>,
 }
 
+#[sp1_derive::cycle_tracker]
 pub fn decrypt_bidder_data(scheme: &Ecies, bidder: &Bidder) -> u128 {
     u128::from_be_bytes(
         scheme.decrypt(&bidder.encrypted_amount).try_into().unwrap()
     )
 }
 
+#[sp1_derive::cycle_tracker]
 pub fn calc_auction_hash(auction_data: &AuctionData) -> [u8; 32] {
     let mut input = vec![];
     let mut hasher = Keccak::v256();
@@ -46,7 +48,9 @@ pub fn find_winner(auction_data: &AuctionData, pvk: PrivateKey) -> (Vec<u8>, u12
     let mut winner_addr = &vec![];
     let mut winner_amount = 0;
     for bidder in &auction_data.bidders {
+        println!("cycle-tracker-start: decrypt-bidder-data");
         let bidder_amount = decrypt_bidder_data(&scheme, bidder);
+        println!("cycle-tracker-end: decrypt-bidder-data");
         if winner_amount < bidder_amount {
             winner_amount = bidder_amount;
             winner_addr = &bidder.address;

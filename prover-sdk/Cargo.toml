@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", rev = "v1.0.1" }
+sp1-sdk = "3.0.0"
 aligned-sp1-prover = { workspace = true }
 bincode = { workspace = true }
 hex = { workspace = true }

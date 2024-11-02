@@ -209,6 +209,7 @@ mod tests {
 
     #[test]
     fn test_sp1_prover() {
+        sp1_sdk::utils::setup_logger();
         // find_winner(&auction_data(), PrivateKey::from_bytes(hex::decode(ENCRYPTION_PRIVATE_KEY).unwrap()));
         let elf = {
             let mut buffer = Vec::new();
@@ -226,21 +227,28 @@ mod tests {
         let client = ProverClient::new();
         let (pk, vk) = client.setup(elf.as_slice());
 
-        println!("Generating proof...");
-        let mut proof = match client.prove(&pk, stdin).compressed().run() {
-            Ok(proof) => proof,
-            Err(e) => panic!("Failed to generate proof: {:?}", e),
-        };
+        let (_, report) = client.execute(&elf, stdin).run().unwrap();
 
-        println!("Proof generated successfully. Verifying proof...");
-        client.verify(&proof, &vk).expect("verification failed");
-        println!("Proof verified successfully.");
-
-        println!("{:?}", proof.public_values);
-        let hash_data = proof.public_values.read::<[u8; 32]>();
-        println!("{:?}", hash_data);
-        let winner_addr = proof.public_values.read::<Vec<u8>>();
-        println!("{:?}", winner_addr);
+        // let hash_cycles = report.cycle_tracker.get("hash-auction-data").unwrap();
+        // let decrypt_cycles = report.cycle_tracker.get("decrypt-bidder-data").unwrap();
+        dbg!(report.cycle_tracker);
+        // println!("Generating proof...");
+        // let mut proof = match client.prove(&pk, stdin).compressed().run() {
+        //     Ok(proof) => proof,
+        //     Err(e) => panic!("Failed to generate proof: {:?}", e),
+        // };
+        //
+        // println!("Proof generated successfully. Verifying proof...");
+        // client.verify(&proof, &vk).expect("verification failed");
+        // println!("Proof verified successfully.");
+        //
+        // // println!("{:?}", proof.public_values);
+        // // let hash_data = proof.public_values.read::<[u8; 32]>();
+        // // println!("{:?}", hash_data);
+        // // let winner_addr = proof.public_values.read::<Vec<u8>>();
+        // // println!("{:?}", winner_addr);
+        // let proof = bincode::serialize(&proof).expect("Failed to serialize proof");
+        // println!("Proof size: {} MB", (proof.len() as f32) / ((1 << 20) as f32));
         // Todo: validate with data
     }
 
@@ -255,8 +263,8 @@ mod tests {
         let y = Bytes::from(vec![1, 2, 3]);
         assert_eq!(y.to_vec(), vec![1, 2, 3]);
 
-        let g = include_bytes!("../pub_input");
-        println!("{:?}", g);
+        // let g = include_bytes!("../pub_input");
+        // println!("{:?}", g);
     }
 
     fn auction_data() -> AuctionData {
@@ -272,11 +280,7 @@ mod tests {
                 Bidder {
                     encrypted_amount: encrypt_bidder_amount(&3, &pbk),
                     address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
-                },
-                Bidder {
-                    encrypted_amount: encrypt_bidder_amount(&2, &pbk),
-                    address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
-                },
+                }; 10
             ],
             id: vec![0; 32],
         }
