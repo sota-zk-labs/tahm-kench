@@ -176,9 +176,11 @@ contract ZkAuction is IERC721Receiver {
     function refundNft(uint256 auctionId) public onlyOwner(auctionId) {
         Auction storage auction = auctions[auctionId];
         require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet");
+        auction.ended = true;
         // Refund nft for owner
         IERC721 nftContract = IERC721(auction.asset.nftContract);
         nftContract.safeTransferFrom(address(this), auction.owner, auction.asset.tokenId);
+        emit AuctionEnded(auctionId, auction.winner.winner, auction.winner.price);
     }
 
     function _verifyProof(

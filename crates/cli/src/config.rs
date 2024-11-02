@@ -12,7 +12,7 @@ pub struct ChainConfig {
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub chain: ChainConfig,
-    pub contract_address: H160
+    pub contract_address: H160,
 }
 
 impl Config {

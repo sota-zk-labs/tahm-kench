@@ -177,7 +177,6 @@ pub async fn create_bid(
     auction_id: U256,
     bid_price: u128,
 ) -> Result<()> {
-    // let auction = get_auction(signer.clone(), auction_contract_address, auction_id).await?;
     let (_, encryption_key, token_address, _, _, deposit_price, _, _) =
         get_auction(signer.clone(), auction_contract_address, auction_id).await?;
     if U256::from(bid_price) > deposit_price {
@@ -285,6 +284,20 @@ pub async fn reveal_winner(
             "Failed to get list bids from auction with id: {}",
             auction_id
         ))?;
+    if bidders.len() == 0 {
+        println!("No one bid, refund NFT");
+        let _ = refund_nft_to_owner(
+            signer.clone(),
+            auction_contract_address.clone(),
+            auction_id.clone(),
+        )
+        .await
+        .unwrap_or_else(|e| {
+            println!("{}", e);
+            panic!("Failed to refund nft from auction with id: {}", auction_id);
+        });
+        return Ok(());
+    }
     println!("bidders: {:?}", bidders);
     //Send to SP1
     let mut auc_id = [0; 32];
@@ -355,19 +368,29 @@ pub async fn withdraw(
     Ok(())
 }
 
-pub async fn refund_nft(
+pub async fn refund_nft_to_owner(
     signer: EthSigner,
     auction_contract_address: Address,
     auction_id: U256,
 ) -> Result<()> {
     let contract = zkAuctionContract::new(auction_contract_address, signer.into());
-    let contract_caller = contract.withdraw(auction_id);
+    let contract_caller = contract.refund_nft(auction_id);
     let tx = contract_caller.send().await?;
     let receipt = tx.await?.unwrap();
-    let tx_hash = receipt.transaction_hash;
     println!(
-        "Withdraw deposit successfully with transaction_hash : {:?}",
-        tx_hash
+        "Refund NFT successfully with transaction_hash : {:?}",
+        receipt.transaction_hash
     );
+    let events = receipt.logs;
+    println!("==========================================================================");
+    for log in events {
+        if log.topics[0] == H256::from(keccak256(b"AuctionEnded(uint256,address,uint128)")) {
+            println!("Auction Ended with:");
+            println!("Winner address: {:?}", Address::from(log.topics[2]));
+            println!("Auction ID: {:?}", U256::decode(log.topics[1])?);
+            println!("Block: {:?}", log.block_number.unwrap());
+            println!("Tx: {:?}", log.transaction_hash.unwrap());
+        }
+    }
     Ok(())
 }

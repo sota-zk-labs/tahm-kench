@@ -11,7 +11,8 @@ use ethers::providers::Provider;
 use ethers::signers::{LocalWallet, Signer};
 use prover_sdk::get_encryption_key;
 use zk_auction::auction::{
-    create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
+    create_bid, create_new_auction, get_auction, get_total_auction, refund_nft_to_owner,
+    reveal_winner, withdraw,
 };
 use zk_auction::config::Config;
 
@@ -95,7 +96,7 @@ enum Commands {
         auction_id: u128,
         #[clap(short, long)]
         keystore_path: String,
-    }
+    },
 }
 
 #[allow(clippy::needless_return)]
@@ -131,8 +132,7 @@ async fn main() -> Result<()> {
                 keystore_path,
                 token_address,
             } => {
-                let (signer, _wallet_address, _wallet) =
-                    set_up_wallet(config.clone(), keystore_path).await;
+                let (signer, _, _) = set_up_wallet(config.clone(), keystore_path).await;
                 let encryption_key = get_encryption_key()?;
                 create_new_auction(
                     signer,
@@ -157,8 +157,7 @@ async fn main() -> Result<()> {
                 auction_id,
                 keystore_path,
             } => {
-                let (signer, _wallet_address, _wallet) =
-                    set_up_wallet(config.clone(), keystore_path).await;
+                let (signer, _, _) = set_up_wallet(config.clone(), keystore_path).await;
                 get_auction(signer, config.contract_address, U256::from(auction_id))
                     .await
                     .unwrap_or_else(|e| {
@@ -235,11 +234,11 @@ async fn main() -> Result<()> {
                 keystore_path,
             } => {
                 let (signer, _, _) = set_up_wallet(config.clone(), keystore_path).await;
-                withdraw(signer, config.contract_address, U256::from(auction_id))
+                refund_nft_to_owner(signer, config.contract_address, U256::from(auction_id))
                     .await
                     .unwrap_or_else(|e| {
                         println!("{}", e);
-                        panic!("Failed to withdraw from auction with id: {}", auction_id);
+                        panic!("Failed to refund nft from auction with id: {}", auction_id);
                     });
                 Ok(())
             }
