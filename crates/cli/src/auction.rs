@@ -368,6 +368,17 @@ pub async fn withdraw(
     Ok(())
 }
 
+/// Refund the NFT for owner of auction
+///
+/// # Arguments
+///
+/// * `signer` - A `SignerMiddleware` configured for interacting with the blockchain and signing transactions.
+/// * `auction_contract_address` - The contract address of the auction platform.
+/// * `auction_id` - ID of the auction.
+///
+/// # Returns
+///
+/// Returns `Result<()>` indicating success or failure.
 pub async fn refund_nft_to_owner(
     signer: EthSigner,
     auction_contract_address: Address,
