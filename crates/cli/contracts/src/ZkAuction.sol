@@ -145,7 +145,6 @@ contract ZkAuction is IERC721Receiver {
      */
     function finalizeAuction(uint256 auctionId, Winner memory _winner, bytes memory proof) public onlyOwner(auctionId) {
         Auction storage auction = auctions[auctionId];
-        require(auction.owner == msg.sender, "You need owner of auction");
         require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet");
         require(!auction.ended, "Auction has ended");
         _verifyProof(_winner, auctionId, proof);
@@ -153,14 +152,14 @@ contract ZkAuction is IERC721Receiver {
         // Set winner and status auction
         auction.winner = _winner;
         auction.ended = true;
-        // Send nft
+        // Send nft to winner
         IERC721 nftContract = IERC721(auction.asset.nftContract);
         nftContract.safeTransferFrom(address(this), auction.winner.winner, auction.asset.tokenId);
-        // Refund token
+        // Refund token for winner
         if (auction.depositPrice > auction.winner.price) {
             auction.token.safeTransfer(auction.winner.winner, auction.depositPrice - auction.winner.price);
         }
-        // Withdraw token
+        // Withdraw token for owner
         auction.token.safeTransfer(msg.sender, auction.winner.price);
 
         emit AuctionEnded(auctionId, auction.winner.winner, auction.winner.price);
@@ -172,6 +171,14 @@ contract ZkAuction is IERC721Receiver {
         require(auction.ended, "Tokens are still locked");
         // Transfer tokens from this contract to the user
         auction.token.safeTransfer(msg.sender, auction.depositPrice);
+    }
+
+    function refundNft(uint256 auctionId) public onlyOwner(auctionId) {
+        Auction storage auction = auctions[auctionId];
+        require(block.timestamp >= auctions[auctionId].endTime, "Auction has not ended yet");
+        // Refund nft for owner
+        IERC721 nftContract = IERC721(auction.asset.nftContract);
+        nftContract.safeTransferFrom(address(this), auction.owner, auction.asset.tokenId);
     }
 
     function _verifyProof(

@@ -354,3 +354,20 @@ pub async fn withdraw(
     );
     Ok(())
 }
+
+pub async fn refund_nft(
+    signer: EthSigner,
+    auction_contract_address: Address,
+    auction_id: U256,
+) -> Result<()> {
+    let contract = zkAuctionContract::new(auction_contract_address, signer.into());
+    let contract_caller = contract.withdraw(auction_id);
+    let tx = contract_caller.send().await?;
+    let receipt = tx.await?.unwrap();
+    let tx_hash = receipt.transaction_hash;
+    println!(
+        "Withdraw deposit successfully with transaction_hash : {:?}",
+        tx_hash
+    );
+    Ok(())
+}

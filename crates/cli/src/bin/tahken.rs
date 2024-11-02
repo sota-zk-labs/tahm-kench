@@ -89,6 +89,13 @@ enum Commands {
         #[clap(short, long)]
         keystore_path: String,
     },
+    /// Refund the NFT
+    RefundNft {
+        #[arg(short, long)]
+        auction_id: u128,
+        #[clap(short, long)]
+        keystore_path: String,
+    }
 }
 
 #[allow(clippy::needless_return)]
@@ -211,6 +218,19 @@ async fn main() -> Result<()> {
                 Ok(())
             }
             Commands::Withdraw {
+                auction_id,
+                keystore_path,
+            } => {
+                let (signer, _, _) = set_up_wallet(config.clone(), keystore_path).await;
+                withdraw(signer, config.contract_address, U256::from(auction_id))
+                    .await
+                    .unwrap_or_else(|e| {
+                        println!("{}", e);
+                        panic!("Failed to withdraw from auction with id: {}", auction_id);
+                    });
+                Ok(())
+            }
+            Commands::RefundNft {
                 auction_id,
                 keystore_path,
             } => {
