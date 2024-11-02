@@ -1,4 +1,5 @@
-contract_address = "0xf759fbbac4764e780c8c08658227f3331002f0fa"
+contract_address = "0x134306b51d6dccbe14e502b53f33ff8caa3e24f3"
+
 [chain]
 rpc_url = "https://ethereum-holesky-rpc.publicnode.com"
 network = "holesky"

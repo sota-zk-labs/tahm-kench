@@ -37,7 +37,7 @@ pub async fn get_winner_and_submit_proof(
     batcher_url: &str,
 ) -> Result<(Address, u128, Vec<u8>)> {
     println!("Creating proof...");
-    
+
     let mut stdin = SP1Stdin::new();
     stdin.write(auction_data);
     stdin.write(&get_private_encryption_key()?.serialize().to_vec());
