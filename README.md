@@ -111,7 +111,33 @@ layer, so we compressed it, which further increased the proving time.
 To address this, we rebuilt the encryption scheme using SP1's patched `secp256k1` crate. This reduced the proving time
 to **1 minute** and compressed the proof size to **1.5MB**. However, the proof couldn't be verified by SP1 due to the
 error `Core(Invalid shard proof: Out-of-domain evaluation mismatch on chip CPU)`. You can review the code in
-the [feat/ecies](https://github.com/sota-zk-labs/tahm-kench/tree/feat/ecies) branch.
+the [feat/ecies](https://github.com/sota-zk-labs/tahm-kench/tree/943c7db048af6acd63b63701eddae6872f404030) branch.
+
+### Benchmarking
+
+We conducted benchmarking tests to compare the performance of the original and patched `secp256k1` crates. The tests
+were run on a machine with a **Core i5-13500 CPU** and **64GB RAM**.
+
+#### Using original secp256k1 crate
+
+This version uses sp1-sdk [v1.0.1](https://github.com/succinctlabs/sp1/tree/v1.0.1), which allows proof verification on
+Aligned (limited to 2 bidders due to proof size constraints).
+
+| Number of bidders: 10     | Compressed mode | Uncompressed mode |
+|---------------------------|-----------------|-------------------|
+| **Proof generation time** | > 30 mins       | ~ 15 mins         |
+| **Proof size**            | 15MB            | 50MB              |
+
+#### Using patched secp256k1 crate
+
+This version uses sp1-sdk [v3.0.0](https://github.com/succinctlabs/sp1/tree/v1.0.1), enabling off-chain proof
+verification without `Out-of-domain` errors (though incompatible with Aligned verification). You can find the
+code [here](https://github.com/sota-zk-labs/tahm-kench/tree/6246001018aa61afbc8212757d774fa7780218fe).
+
+| Number of bidders: 10     | Compressed mode | Uncompressed mode |
+|---------------------------|-----------------|-------------------|
+| **Proof generation time** | 7 mins          | 2.5 mins          |
+| **Proof size**            | 1.2MB           | 16MB              |
 
 ### Future Plans
 
