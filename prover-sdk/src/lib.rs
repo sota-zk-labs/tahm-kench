@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_sp1_prover() {
-        sp1_sdk::utils::setup_logger();
+        // sp1_sdk::utils::setup_logger();
         // find_winner(&auction_data(), PrivateKey::from_bytes(hex::decode(ENCRYPTION_PRIVATE_KEY).unwrap()));
         let elf = {
             let mut buffer = Vec::new();
@@ -227,20 +227,20 @@ mod tests {
         let client = ProverClient::new();
         let (pk, vk) = client.setup(elf.as_slice());
 
-        let (_, report) = client.execute(&elf, stdin).run().unwrap();
-
-        // let hash_cycles = report.cycle_tracker.get("hash-auction-data").unwrap();
-        // let decrypt_cycles = report.cycle_tracker.get("decrypt-bidder-data").unwrap();
-        dbg!(report.cycle_tracker);
-        // println!("Generating proof...");
-        // let mut proof = match client.prove(&pk, stdin).compressed().run() {
-        //     Ok(proof) => proof,
-        //     Err(e) => panic!("Failed to generate proof: {:?}", e),
-        // };
+        // let (_, report) = client.execute(&elf, stdin).run().unwrap();
         //
-        // println!("Proof generated successfully. Verifying proof...");
-        // client.verify(&proof, &vk).expect("verification failed");
-        // println!("Proof verified successfully.");
+        // // let hash_cycles = report.cycle_tracker.get("hash-auction-data").unwrap();
+        // // let decrypt_cycles = report.cycle_tracker.get("decrypt-bidder-data").unwrap();
+        // dbg!(report.cycle_tracker);
+        println!("Generating proof...");
+        let mut proof = match client.prove(&pk, stdin).run() {
+            Ok(proof) => proof,
+            Err(e) => panic!("Failed to generate proof: {:?}", e),
+        };
+
+        println!("Proof generated successfully. Verifying proof...");
+        client.verify(&proof, &vk).expect("verification failed");
+        println!("Proof verified successfully.");
         //
         // // println!("{:?}", proof.public_values);
         // // let hash_data = proof.public_values.read::<[u8; 32]>();
@@ -280,7 +280,7 @@ mod tests {
                 Bidder {
                     encrypted_amount: encrypt_bidder_amount(&3, &pbk),
                     address: hex::decode("eDe4C2b4BdBE580750a99F016b0A1581C3808FA3").unwrap(),
-                }; 10
+                }; 1
             ],
             id: vec![0; 32],
         }
