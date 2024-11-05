@@ -69,21 +69,37 @@ generation. The auction process follows four main phases:
 1. **Initial Setup**: The auction owner creates the auction, sets the required deposit amount, transfers assets to the
    smart contract,
    and defines the auction's start and end times.
-2. **Bid Phase**: Bidders submit their bids to the smart contract by depositing the required amount.
-3. **Open Phase**: After the bidding window closes, the auction owner calculates the winner and generates a
+2. **Bidding Phase**: Bidders submit their bids to the smart contract by depositing the required amount.
+3. **Opening Phase**: After the bidding window closes, the auction owner calculates the winner and generates a
    zero-knowledge proof.
-4. **Verify Phase**: The owner submits the winner and the proof to the smart contract for verification, concluding the
+4. **Verification Phase**: The owner submits the winner and the proof to the smart contract for verification, concluding the
    auction.
 
 **Sequence diagrams for each module are shown below:**
 
 #### Auction Flow:
 
-![auction_flow](diagram/auction_flow.png)
+1. **Initial Setup**:
 
-#### Prover & Verifier Flow:
+![initial setup](diagram/initial_setup.png)
 
-![prover_verifier_flow](diagram/prover_verifier_flow.png)
+2. **Bidding Phase**:
+
+![bidding phase](diagram/bidding.png)
+
+3. **Opening Phase**:
+
+![opening phase](diagram/opening.png)
+
+4. **Verification Phase**:
+
+![verification phase](diagram/verification.png)
+
+
+#### Verification Inner Flow:
+
+![verification inner](diagram/verification_inner.png)
+
 
 ### Challenges
 
