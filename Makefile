@@ -32,7 +32,7 @@ test-submit-proof:
 test-prove:
 	cd crates/sp1-prover && make gen-key && make elf-commit
 	cargo test --release --color=always --lib tests::test_sp1_prover \
-	--no-fail-fast --manifest-path crates/prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output
+	--no-fail-fast --manifest-path crates/prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture
 
 test-mint:
 	cargo test --color=always --lib tests::test_auction::test::test_mint \

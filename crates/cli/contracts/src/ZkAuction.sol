@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import {ISP1Verifier} from "sp1-contracts/src/ISP1Verifier.sol";
+import {ISP1Verifier} from "lib/sp1-contracts/contracts/src/ISP1Verifier.sol";
 
 contract ZkAuction is IERC721Receiver {
     using SafeERC20 for IERC20;
@@ -172,7 +172,7 @@ contract ZkAuction is IERC721Receiver {
     function finalizeAuction(
         uint256 auctionId,
         Winner memory _winner,
-        bytes calldata publicValues,
+        bytes calldata publicInput,
         bytes memory proof
     ) public onlyOwner(auctionId) {
         Auction storage auction = auctions[auctionId];
@@ -182,7 +182,7 @@ contract ZkAuction is IERC721Receiver {
             "Auction has not ended yet"
         );
         require(!auction.ended, "Auction has ended");
-        _verifyProof(_winner, auctionId, publicValues, proof);
+        _verifyProof(_winner, auctionId, publicInput, proof);
         require(
             _winner.price <= auction.depositPrice,
             "Winner has more bid price than deposit price"
@@ -225,22 +225,53 @@ contract ZkAuction is IERC721Receiver {
     function _verifyProof(
         Winner memory winner,
         uint256 auctionId,
-        bytes calldata publicValues,
+        bytes calldata publicInput,
         bytes memory proof
     ) internal view {
         (
             bytes32 auctionHash,
-            address winner_addr,
-            uint128 winner_price
-        ) = abi.decode(publicValues, (bytes32, address, uint128));
+            address winnerAddr,
+            uint128 winnerPrice
+        ) = decodePublicInput(publicInput);
 
-        require(winner_addr == winner.winner, "Winner address in proof does not match");
-        require(winner_price == winner.price, "Winner price in proof does not match");
+        require(winnerAddr == winner.winner, "Winner address in proof does not match");
+        require(winnerPrice == winner.price, "Winner price in proof does not match");
         require(
             calculateAuctionHash(auctionId) == auctionHash,
             "Auction hash does not match"
         );
-        SP1_VERIFIER.verifyProof(VERIFICATION_KEY, publicValues, proof);
+        SP1_VERIFIER.verifyProof(VERIFICATION_KEY, publicInput, proof);
+    }
+
+    function decodePublicInput(bytes memory data) internal pure returns (
+        bytes32 auctionHash,
+        address winnerAddr,
+        uint128 winnerPrice
+    ) {
+        auctionHash = bytes32(slice(data, 0, 32));
+        winnerAddr = address(bytes20(slice(data, 32 + 8, 20)));
+        winnerPrice = uint128(bytes16(reverse(slice(data, 32 + 8 + 20, 16))));
+    }
+
+    function slice(
+        bytes memory data,
+        uint256 start,
+        uint256 length
+    ) internal pure returns (bytes memory) {
+        require(start + length <= data.length, "Slice out of bounds");
+        bytes memory result = new bytes(length);
+        for (uint256 i = 0; i < length; i++) {
+            result[i] = data[start + i];
+        }
+        return result;
+    }
+
+    function reverse(bytes memory data) internal pure returns (bytes memory) {
+        bytes memory result = new bytes(data.length);
+        for (uint256 i = 0; i < data.length; i++) {
+            result[i] = data[data.length - 1 - i];
+        }
+        return result;
     }
 
     function calculateAuctionHash(uint256 auctionId) internal view returns (bytes32) {

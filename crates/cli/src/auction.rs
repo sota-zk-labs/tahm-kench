@@ -3,7 +3,6 @@ use anyhow::{anyhow, Context, Result};
 use chrono::{TimeZone, Utc};
 use ecies::PublicKey;
 use ethers::abi::AbiDecode;
-use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
 use ethers::types::{Address, Bytes, U256};
 use ethers::utils::keccak256;
@@ -29,6 +28,7 @@ abigen!(zkAuctionContract, "./assets/ZkAuction.json");
 /// * `token_id` - ID of the NFT token to be auctioned.
 /// * `target_price` - The price expected for the auction to be successful.
 /// * `duration` - The duration for which the auction will be active, measured in blockchain blocks or seconds, depending on the implementation.
+#[allow(clippy::too_many_arguments)]
 pub async fn create_new_auction(
     signer: EthSigner,
     auction_contract_address: Address,
@@ -176,7 +176,6 @@ pub async fn create_bid(
     auction_id: U256,
     bid_price: u128,
 ) -> Result<()> {
-    // let auction = get_auction(signer.clone(), auction_contract_address, auction_id).await?;
     let (_, encryption_key, token_address, _, _, deposit_price, _, _) =
         get_auction(signer.clone(), auction_contract_address, auction_id).await?;
     if U256::from(bid_price) > deposit_price {
@@ -246,17 +245,13 @@ pub async fn get_list_bids(
     Ok(list_bids)
 }
 
-/// Reveals the auction winner.
-///
-/// # Arguments
+/// Reveals the winner of an auction and submits the proof to the contract.
+/// 
+/// # Arguments 
 ///
 /// * `signer` - A `SignerMiddleware` configured for interacting with the blockchain and signing transactions.
 /// * `auction_contract_address` - The contract address of the auction platform.
 /// * `auction_id` - ID of the auction.
-/// * `wallet` - Wallet used to sign the winner's proof and other operations.
-/// * `rpc_url` - URL of the Ethereum node to connect to.
-/// * `network` - The network on which the auction is deployed (e.g., Ethereum mainnet or testnet).
-/// * `batcher_url` - URL of the batcher service for processing ZKP proofs.
 ///
 /// # Returns
 ///
@@ -271,7 +266,6 @@ pub async fn get_list_bids(
 pub async fn reveal_winner(
     signer: EthSigner,
     auction_contract_address: Address,
-    wallet_private_key: &SigningKey,
     auction_id: U256,
 ) -> Result<()> {
     // Get list bids
@@ -289,8 +283,7 @@ pub async fn reveal_winner(
         &AuctionData {
             bidders,
             id: auc_id.to_vec(),
-        },
-        wallet_private_key,
+        }
     )
     .await?;
 

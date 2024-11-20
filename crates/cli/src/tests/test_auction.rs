@@ -92,7 +92,6 @@ mod test {
         reveal_winner(
             owner_signer.clone(),
             config.contract_address,
-            &owner_pvk,
             auction_id,
         )
         .await

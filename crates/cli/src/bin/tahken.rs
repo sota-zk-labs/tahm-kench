@@ -181,11 +181,10 @@ async fn main() -> Result<()> {
                 auction_id,
                 keystore_path,
             } => {
-                let (signer, _, pvk) = setup_wallet(&config, &keystore_path).await;
+                let (signer, ..) = setup_wallet(&config, &keystore_path).await;
                 reveal_winner(
                     signer,
                     config.contract_address,
-                    &pvk,
                     U256::from(auction_id),
                 )
                 .await
