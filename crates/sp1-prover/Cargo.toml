@@ -1,13 +1,10 @@
 [package]
-name = "aligned-sp1-prover"
+name = "auction-sp1-prover"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ecies = { version = "0.2.6", default-features = false, features = [
-  "pure",
-  "std",
-] }
+ecies = { path = "../ecies" }
 serde = "1.0.210"
 sp1-zkvm = "3.0.0"
 tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "patch-v2.0.2", features = [

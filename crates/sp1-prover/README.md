@@ -6,7 +6,7 @@ make gen-key
 
 ## Generate ELF file
 ```bash
-make elf-commit
+make elf-vk
 ```
 
 ## Test circuit

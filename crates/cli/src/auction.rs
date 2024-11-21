@@ -1,11 +1,11 @@
-use aligned_sp1_prover::{AuctionData, Bidder};
+use auction_sp1_prover::{AuctionData, Bidder};
 use anyhow::{anyhow, Context, Result};
 use chrono::{TimeZone, Utc};
-use ecies::PublicKey;
 use ethers::abi::AbiDecode;
 use ethers::prelude::*;
 use ethers::types::{Address, Bytes, U256};
 use ethers::utils::keccak256;
+use ecies::public_key::PublicKey;
 use prover_sdk::{encrypt_bidder_amount, find_winner};
 
 use crate::types::EthSigner;
@@ -53,7 +53,7 @@ pub async fn create_new_auction(
     // Create Auction
     let zk_auction_contract = zkAuctionContract::new(auction_contract_address, signer.into());
     let contract_caller = zk_auction_contract.create_auction(
-        Bytes::from(pbk_encryption.serialize()),
+        Bytes::from(pbk_encryption.to_bytes()),
         token_addr,
         nft_contract_address,
         token_id,
@@ -192,8 +192,7 @@ pub async fn create_bid(
     println!("Auction ID: {:?}", auction_id);
     println!("Tx: {:?}", approve_receipt.transaction_hash);
 
-    let encryption_key = PublicKey::parse((*encryption_key.to_vec()).try_into()?)
-        .expect("Wrong on-chain encryption key");
+    let encryption_key = PublicKey::from_bytes((*encryption_key.to_vec()).try_into()?);
     // Encrypted price
     let encrypted_price = encrypt_bidder_amount(&bid_price, &encryption_key);
 

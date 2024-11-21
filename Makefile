@@ -24,14 +24,9 @@ update-abi:
 taplo-fmt:
 	taplo format --config taplo/taplo.toml
 
-test-submit-proof:
-	cd crates/sp1-prover && make elf-commit
-	RUST_BACKTRACE=1 cargo test --release --color=always --lib tests::test_submit_proof \
-	--no-fail-fast --manifest-path crates/prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture
-
-test-prove:
-	cd crates/sp1-prover && make gen-key && make elf-commit
-	cargo test --release --color=always --lib tests::test_sp1_prover \
+test-find-winner:
+	cd crates/sp1-prover && make gen-key && make elf-vk
+	RUST_BACKTRACE=1 cargo test --release --color=always --lib tests::test_find_winner \
 	--no-fail-fast --manifest-path crates/prover-sdk/Cargo.toml -- --exact -Z unstable-options --show-output --nocapture
 
 test-mint:

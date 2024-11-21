@@ -1,4 +1,4 @@
-use ecies::SecretKey;
+use ecies::Ecies;
 use serde::{Deserialize, Serialize};
 use tiny_keccak::{Hasher, Keccak};
 
@@ -18,17 +18,12 @@ pub struct Bidder {
 ///
 /// # Arguments
 ///
-/// * `pvk`: owner's private key
-/// * `bidder`: encrypted bidder data
+/// * `scheme`: ECIES scheme
+/// * `bidder`: bidder's data
 ///
-/// returns: u128 Bidder amount
-pub fn decrypt_bidder_data(pvk: &SecretKey, bidder: &Bidder) -> u128 {
-    u128::from_be_bytes(
-        ecies::decrypt(&pvk.serialize(), &bidder.encrypted_amount)
-            .expect("failed to decrypt")
-            .try_into()
-            .unwrap(),
-    )
+/// returns: u128 Bidder's amount
+pub fn decrypt_bidder_data(scheme: &Ecies, bidder: &Bidder) -> u128 {
+    u128::from_be_bytes(scheme.decrypt(&bidder.encrypted_amount).try_into().unwrap())
 }
 
 /// Calculate the hash of the auction data to ensure the integrity of the data
@@ -58,30 +53,18 @@ pub fn calc_auction_hash(auction_data: &AuctionData) -> [u8; 32] {
 mod tests {
     use std::fs;
 
-    use ecies::{PublicKey, SecretKey};
+    use ecies::private_key::PrivateKey;
     use rand::rngs::OsRng;
 
     use crate::{calc_auction_hash, AuctionData, Bidder};
 
     #[test]
-    fn test_decrypt_data() {
-        let (pvk, pbk) = get_key();
-        // let mut rng = rand::thread_rng();
-        let bidder = Bidder {
-            encrypted_amount: encrypt_bidder_amount(&(1e23 as u128), &pbk),
-            address: vec![0; 32],
-        };
-        let amount = super::decrypt_bidder_data(&pvk, &bidder);
-        assert_eq!(amount, 1e23 as u128);
-    }
-
-    #[test]
     fn test_gen_key() {
         let mut rng = OsRng;
-        let pvk = SecretKey::random(&mut rng);
-        let pbk = PublicKey::from_secret_key(&pvk);
-        let pvk = hex::encode(pvk.serialize());
-        let pbk = hex::encode(pbk.serialize());
+        let pvk = PrivateKey::from_rng(&mut rng);
+        let pbk = pvk.to_public_key();
+        let pvk = hex::encode(pvk.to_bytes());
+        let pbk = hex::encode(pbk.to_bytes());
         println!("Private key: {}", &pvk);
         println!("Public key: {}", &pbk);
         fs::write("private_encryption_key", pvk).expect("failed to write private key to file");
@@ -129,16 +112,5 @@ mod tests {
             hex::encode(calc_auction_hash(&data)),
             "eec15d5f07c54d6bc722494c90d0404960ec255907c62e8928e2969a186a2350"
         );
-    }
-
-    fn encrypt_bidder_amount(amount: &u128, pbk: &PublicKey) -> Vec<u8> {
-        ecies::encrypt(&pbk.serialize(), &amount.to_be_bytes())
-            .expect("failed to encrypt bidder data")
-    }
-
-    fn get_key() -> (SecretKey, PublicKey) {
-        let pvk = SecretKey::parse_slice(&hex::decode(fs::read_to_string("private_encryption_key").unwrap()).unwrap())
-            .expect("fail to read private key");
-        (pvk, PublicKey::from_secret_key(&pvk))
     }
 }

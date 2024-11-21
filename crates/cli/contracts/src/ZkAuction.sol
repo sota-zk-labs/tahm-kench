@@ -11,7 +11,7 @@ contract ZkAuction is IERC721Receiver {
     using SafeERC20 for IERC20;
 
     // Data for verifying proof
-    bytes32 public constant VERIFICATION_KEY = 0x0016a6bd3516991b4d8e2c3e5b3022f2de3579c5a0ffa1b35ca53f9ed0bb4df1;
+    bytes32 public constant VERIFICATION_KEY = 0x0072d1c573b7b587cf19f5ebb986a1409c35bd63ec98735746a778038dc1ab9d;
     ISP1Verifier public constant SP1_VERIFIER = ISP1Verifier(0x3B6041173B80E77f038f3F2C0f9744f04837185e);
 
     struct Auction {
