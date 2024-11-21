@@ -10,152 +10,126 @@ The project aims to facilitate secure and private auctions by leveraging **zero-
 the highest bidder without revealing individual bid amounts. This ensures both privacy and fairness in the bidding
 process.
 
-Additionally, **Tahm-Kench** serves as a **reference model** for developers interested in building decentralized
-applications (dApps) using **Aligned** and **ZKPs**.
+Additionally, **Tahm-Kench** serves as a **reference model** for developers interested in building decentralized applications (dApps)
+using **Aligned** and **ZKPs**.
 
 ## Team :busts_in_silhouette:
 
-- **Team Members:** We are part of [SotaZK Labs](https://sotazk.org/), a team focused on pioneering zero-knowledge
-  solutions to enhance
+- **Team Members:** Part of [SotaZK Labs](https://sotazk.org/), a team dedicated to pioneering zero-knowledge solutions that enhance
   security and privacy in the decentralized world.
-- **Number of Members**: 7
+- **Number of Members:** 7
 - **Contact Information:**
     - **Name:** Steve Nguyen
     - **Email:** zk.steve.nguyen@gmail.com
     - **Telegram:** @zk_steve
-- **Prior Work/Research (Optional):**
-    - [ZKP Documentation](https://github.com/sota-zk-labs/zkp-documents): A repository dedicated to demystifying
-      zero-knowledge proof
-      technology, including KZG, GKR, FRI, Plonk, DARK, Groth16, lattice-based commitment schemes, sum-check protocol,
-      Nova, EIP-4844, etc.
-    - [ZKP Implementation](https://github.com/sota-zk-labs/zkp-implementation): Various ZKP protocols, including KZG,
-      FRI, and Plonk.
-    - [Apstark](https://github.com/sota-zk-labs/apstark): A layer 2 ZK rollup blockchain built on the Aptos network
-      using the Starknet
+- **Prior Work/Research:**
+    - [ZKP Documentation](https://github.com/sota-zk-labs/zkp-documents): A repository exploring ZKP technologies such as KZG, GKR,
+      FRI, Plonk, DARK, Groth16, lattice-based commitment schemes, sum-check protocols, Nova, EIP-4844, and more.
+    - [ZKP Implementation](https://github.com/sota-zk-labs/zkp-implementation): Implementations of ZKP protocols, including KZG, FRI,
+      and Plonk.
+    - [Apstark](https://github.com/sota-zk-labs/apstark): A Layer-2 ZK rollup blockchain built on the Aptos network using the Starknet
       tech stack.
 
 ## Overview
 
-### Core idea
+### Core Idea
 
-Bidders submit encrypted bids to a smart contract, which only the auction owner can decrypt using their secret key. At
-the conclusion
-of the auction, the owner publishes the winner. **ZKPs** ensure that the auction owner reads all bids and selects the
-highest one
+Bidders submit encrypted bids to a smart contract, which only the auction owner can decrypt using their secret key. At the conclusion
+of the auction, the owner publishes the winner. **ZKPs** ensure the auction owner processes all bids and selects the highest one
 without revealing their private key or any bid details.
 
 Key components of the project include:
 
-- **Proving Service**: Powered by **SP1**, this service generates a **zero-knowledge proof** from the execution trace of
-  a program that decrypts bids and computes the winner, while preserving the confidentiality of individual bid amounts
-  and the owner's private key.
-- **Smart Contract**: The smart contract verifies the ZK proof and manages the entire auction lifecycle, including
-  setup, bidding, and settlement.
+- **Proving Service:** Powered by **SP1**, this service generates a **zero-knowledge proof** from the execution trace of a program that
+  decrypts bids and computes the winner, ensuring the confidentiality of bid amounts and the owner's private key.
+- **Smart Contract:** Manages the auction lifecycle (setup, bidding, and settlement) and verifies the ZK proof.
 
 ### Technology Stack
 
-- **Smart Contract**: Solidity
-- **Circuit**: Rust, SP1
-- **Encryption scheme**: secp256k1, AES-256-GCM, HKDF-SHA256
-- **Verifier**: Aligned layer
+- **Smart Contract:** Solidity
+- **Circuit:** Rust, SP1
+- **Encryption Scheme:** secp256k1, AES-256-GCM, HKDF-SHA256
+- **Verifier:** Aligned Layer
 
 ### Workflow
 
-You can view our workflow demo video [here](https://www.youtube.com/watch?v=uM8o2fUbVP0).
+Watch our workflow demo video [here](https://www.youtube.com/watch?v=uM8o2fUbVP0).
 
-The core logic of **Tahm-Kech** operates on-chain, while off-chain processes handle the winner calculation and proof
-generation. The auction process follows four main phases:
+**Tahm-Kench's** core logic operates on-chain, while off-chain processes handle winner calculation and proof generation. The auction
+process has four main phases:
 
-1. **Initial Setup**: The auction owner creates the auction, sets the required deposit amount, transfers assets to the
-   smart contract,
-   and defines the auction's start and end times.
-2. **Bidding Phase**: Bidders submit their bids to the smart contract by depositing the required amount.
-3. **Opening Phase**: After the bidding window closes, the auction owner calculates the winner and generates a
-   zero-knowledge proof.
-4. **Verification Phase**: The owner submits the winner and the proof to the smart contract for verification, concluding the
-   auction.
+1. **Initial Setup:** The auction owner creates the auction, sets a deposit amount, transfers assets to the smart contract, and defines
+   the start and end times.
+2. **Bidding Phase:** Bidders submit encrypted bids and deposit the required amount.
+3. **Opening Phase:** After the bidding window closes, the auction owner calculates the winner and generates the corresponding ZKP.
+4. **Verification Phase:** The winner and proof are submitted to the smart contract for verification, concluding the auction.
 
-**Sequence diagrams for each module are shown below:**
+#### Sequence Diagrams:
 
-#### Auction Flow:
-
-1. **Initial Setup**:
-
-![initial setup](diagram/initial_setup.png)
-
-2. **Bidding Phase**:
-
-![bidding phase](diagram/bidding.png)
-
-3. **Opening Phase**:
-
-![opening phase](diagram/opening.png)
-
-4. **Verification Phase**:
-
-![verification phase](diagram/verification.png)
-
+1. **Initial Setup:**
+   ![initial setup](diagram/initial_setup.png)
+2. **Bidding Phase:**
+   ![bidding phase](diagram/bidding.png)
+3. **Opening Phase:**
+   ![opening phase](diagram/opening.png)
+4. **Verification Phase:**
+   ![verification phase](diagram/verification.png)
 
 #### Verification Inner Flow:
 
 ![verification inner](diagram/verification_inner.png)
 
-
 ### Challenges
 
-We used the [ecies](https://crates.io/crates/ecies) crate to encrypt and decrypt bids. However, the proving time and
-proof size were substantial:it took **6 minutes** to generate a proof for **2 bids**, resulting in a **21MB** proof size
-on a system with **64GB RAM** and an **i5-13500 CPU**. This large proof size couldn't be submitted to the Aligned
-layer, so we compressed it, which further increased the proving time.
+We initially used the [ecies](https://crates.io/crates/ecies) crate to encrypt and decrypt bids. However, proving time and proof size
+were problematic: **6 minutes** to generate a proof for **2 bids**, resulting in a **21MB** proof size on a system with **64GB RAM**
+and an **i5-13500 CPU**. This large proof size was incompatible with the Aligned layer, requiring compression and thus further
+increasing
+proving time.
 
-To address this, we rebuilt the encryption scheme using SP1's patched `secp256k1` crate. This reduced the proving time
-to **1 minute** and compressed the proof size to **1.5MB**. However, the proof couldn't be verified by SP1 due to the
-error `Core(Invalid shard proof: Out-of-domain evaluation mismatch on chip CPU)`. You can review the code in
+To improve performance, we rebuilt the encryption scheme using SP1's patched `secp256k1` crate. This reduced proving time to **1 minute
+** and proof size to **1.5MB**. However, verification on SP1 failed due to the error
+`Core(Invalid shard proof: Out-of-domain evaluation mismatch on chip CPU)`. The code is available in
 the [feat/ecies](https://github.com/sota-zk-labs/tahm-kench/tree/943c7db048af6acd63b63701eddae6872f404030) branch.
 
 ### Benchmarking
 
-We conducted benchmarking tests to compare the performance of the original and patched `secp256k1` crates. The tests
-were run on a machine with a **Core i5-13500 CPU** and **64GB RAM**.
+We compared performance of the original and patched `secp256k1` crates on a **Core i5-13500 CPU** with **64GB RAM**.
 
-#### Using original secp256k1 crate
+#### Original secp256k1 Crate
 
-This version uses sp1-sdk [v1.0.1](https://github.com/succinctlabs/sp1/tree/v1.0.1), which allows proof verification on
-Aligned (limited to 2 bidders due to proof size constraints).
+Uses sp1-sdk [v1.0.1](https://github.com/succinctlabs/sp1/tree/v1.0.1), compatible with Aligned verification.
 
-| Number of bidders: 10     | Compressed mode | Uncompressed mode |
-|---------------------------|-----------------|-------------------|
-| **Proof generation time** | > 30 mins       | ~ 15 mins         |
-| **Proof size**            | 15MB            | 50MB              |
+| **Number of Bidders: 10** | **Compressed Mode** | **Uncompressed Mode** |
+|---------------------------|---------------------|-----------------------|
+| Proof Generation Time     | >30 mins            | ~15 mins              |
+| Proof Size                | 15MB                | 50MB                  |
 
-#### Using patched secp256k1 crate
+#### Patched secp256k1 Crate
 
-This version uses sp1-sdk [v3.0.0](https://github.com/succinctlabs/sp1/tree/v1.0.1), enabling off-chain proof
-verification without `Out-of-domain` errors (though incompatible with Aligned verification). You can find the
-code [here](https://github.com/sota-zk-labs/tahm-kench/tree/6246001018aa61afbc8212757d774fa7780218fe).
+Uses sp1-sdk [v3.0.0](https://github.com/succinctlabs/sp1/tree/v1.0.1), optimized for off-chain proof verification but incompatible
+with Aligned verification. Code
+available [here](https://github.com/sota-zk-labs/tahm-kench/tree/6246001018aa61afbc8212757d774fa7780218fe).
 
-| Number of bidders: 10     | Compressed mode | Uncompressed mode |
-|---------------------------|-----------------|-------------------|
-| **Proof generation time** | 7 mins          | 2.5 mins          |
-| **Proof size**            | 1.2MB           | 16MB              |
+| **Number of Bidders: 10** | **Compressed Mode** | **Uncompressed Mode** |
+|---------------------------|---------------------|-----------------------|
+| Proof Generation Time     | 7 mins              | 2.5 mins              |
+| Proof Size                | 1.2MB               | 16MB                  |
 
 ### Future Plans
 
-Due to SP1's performance limitations, we plan to use `Gnark` as the tool to build a custom circuit optimized for our
-existing encryption scheme. Following this development, we aim to introduce additional auction types, such as **Unique
-Lowest Bid Auctions** and **Dutch Auctions**. We also plan to explore collaborations with other **dApps**, including
-**DeFi platforms**, to facilitate automatic asset management based on auction outcomes.
+Future developments include optimizing performance of the prover, introducing auction types like **Unique Lowest Bid Auctions** and *
+*Dutch Auctions**, and exploring partnerships with other **dApps**, such as **DeFi platforms**, for automated asset management based on
+auction results.
 
-## Execution instructions
+## Execution Instructions
 
 ### Requirements
 
-Ensure you have the following installed:
-
-1. [Rust](https://www.rust-lang.org/tools/install)
-2. [Foundry](https://getfoundry.sh)
-3. [Aligned CLI](https://docs.alignedlayer.com/introduction/1_try_aligned)
-4. [SP1](https://docs.succinct.xyz/getting-started/install.html)
+- [Rust](https://www.rust-lang.org/tools/install)
+- [Foundry](https://getfoundry.sh)
+- [Aligned CLI](https://docs.alignedlayer.com/introduction/1_try_aligned)
+- [SP1](https://docs.succinct.xyz/getting-started/install.html)
 
 ### Setup
 
@@ -212,5 +186,3 @@ tahken -h
 ### Demo
 
 You can watch our demo video [here](https://www.youtube.com/watch?v=zd2pueMMGkQ).
-
-## Project roadmap
