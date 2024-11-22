@@ -1,19 +1,13 @@
-use std::str::FromStr;
-use std::sync::Arc;
-
-use aligned_sdk::core::types::Network;
 use anyhow::Result;
 use clap::CommandFactory;
 use clap::{Parser, Subcommand};
-use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
-use ethers::providers::Provider;
-use ethers::signers::{LocalWallet, Signer};
 use prover_sdk::get_encryption_key;
 use zk_auction::auction::{
     create_bid, create_new_auction, get_auction, get_total_auction, reveal_winner, withdraw,
 };
 use zk_auction::config::Config;
+use zk_auction::utils::setup_wallet;
 
 #[derive(Parser, Debug)]
 #[command(name = "tahken")]
@@ -104,10 +98,6 @@ async fn main() -> Result<()> {
     let config = Config::new(&args.config_path)
         .unwrap_or_else(|_| panic!("Failed to load config from {:?}", &args.config_path));
 
-    let rpc_url = config.chain.rpc_url.as_str();
-    let network = Network::from_str(&config.chain.network).unwrap();
-    let aligned_batcher_url = config.chain.aligned_batcher_url.as_str();
-
     match args.command {
         Some(command) => match command {
             Commands::Version => {
@@ -124,8 +114,7 @@ async fn main() -> Result<()> {
                 keystore_path,
                 token_address,
             } => {
-                let (signer, _wallet_address, _wallet) =
-                    set_up_wallet(config.clone(), keystore_path).await;
+                let (signer, ..) = setup_wallet(&config, &keystore_path).await;
                 let encryption_key = get_encryption_key()?;
                 create_new_auction(
                     signer,
@@ -150,8 +139,7 @@ async fn main() -> Result<()> {
                 auction_id,
                 keystore_path,
             } => {
-                let (signer, _wallet_address, _wallet) =
-                    set_up_wallet(config.clone(), keystore_path).await;
+                let (signer, ..) = setup_wallet(&config, &keystore_path).await;
                 get_auction(signer, config.contract_address, U256::from(auction_id))
                     .await
                     .unwrap_or_else(|e| {
@@ -161,7 +149,7 @@ async fn main() -> Result<()> {
                 Ok(())
             }
             Commands::ListAuctions { keystore_path } => {
-                let (signer, _, _) = set_up_wallet(config.clone(), keystore_path).await;
+                let (signer, ..) = setup_wallet(&config, &keystore_path).await;
                 get_total_auction(signer, config.contract_address)
                     .await
                     .unwrap_or_else(|e| {
@@ -175,7 +163,7 @@ async fn main() -> Result<()> {
                 auction_id,
                 keystore_path,
             } => {
-                let (signer, _, _) = set_up_wallet(config.clone(), keystore_path).await;
+                let (signer, ..) = setup_wallet(&config, &keystore_path).await;
                 create_bid(
                     signer,
                     config.contract_address,
@@ -193,15 +181,11 @@ async fn main() -> Result<()> {
                 auction_id,
                 keystore_path,
             } => {
-                let (signer, _, wallet) = set_up_wallet(config.clone(), keystore_path).await;
+                let (signer, ..) = setup_wallet(&config, &keystore_path).await;
                 reveal_winner(
                     signer,
                     config.contract_address,
                     U256::from(auction_id),
-                    wallet,
-                    rpc_url,
-                    network,
-                    aligned_batcher_url,
                 )
                 .await
                 .unwrap_or_else(|e| {
@@ -214,7 +198,7 @@ async fn main() -> Result<()> {
                 auction_id,
                 keystore_path,
             } => {
-                let (signer, _, _) = set_up_wallet(config.clone(), keystore_path).await;
+                let (signer, ..) = setup_wallet(&config, &keystore_path).await;
                 withdraw(signer, config.contract_address, U256::from(auction_id))
                     .await
                     .unwrap_or_else(|e| {
@@ -229,32 +213,4 @@ async fn main() -> Result<()> {
             Ok(())
         }
     }
-}
-
-async fn set_up_wallet(
-    config: Config,
-    keystore_path: String,
-) -> (
-    SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
-    Address,
-    Wallet<SigningKey>,
-) {
-    let rpc_url = config.chain.rpc_url.as_str();
-    let provider = Provider::<Http>::try_from(rpc_url).expect("Failed to connect to provider");
-    let chain_id = provider
-        .get_chainid()
-        .await
-        .expect("Failed to get chain_id");
-
-    let keystore_password = rpassword::prompt_password("Enter keystore password: ")
-        .expect("Failed to read keystore password");
-
-    let wallet = LocalWallet::decrypt_keystore(keystore_path, &keystore_password)
-        .expect("Failed to decrypt keystore")
-        .with_chain_id(chain_id.as_u64());
-
-    let signer = SignerMiddleware::new(Arc::new(provider.clone()), wallet.clone());
-    let wallet_address = signer.clone().address();
-
-    (signer, wallet_address, wallet)
 }

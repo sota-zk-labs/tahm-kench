@@ -1,14 +1,12 @@
-use aligned_sdk::core::types::Network;
-use aligned_sp1_prover::{AuctionData, Bidder};
+use auction_sp1_prover::{AuctionData, Bidder};
 use anyhow::{anyhow, Context, Result};
 use chrono::{TimeZone, Utc};
-use ecies::PublicKey;
 use ethers::abi::AbiDecode;
-use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
 use ethers::types::{Address, Bytes, U256};
 use ethers::utils::keccak256;
-use prover_sdk::{encrypt_bidder_amount, get_winner_and_submit_proof};
+use ecies::public_key::PublicKey;
+use prover_sdk::{encrypt_bidder_amount, find_winner};
 
 use crate::types::EthSigner;
 
@@ -30,6 +28,7 @@ abigen!(zkAuctionContract, "./assets/ZkAuction.json");
 /// * `token_id` - ID of the NFT token to be auctioned.
 /// * `target_price` - The price expected for the auction to be successful.
 /// * `duration` - The duration for which the auction will be active, measured in blockchain blocks or seconds, depending on the implementation.
+#[allow(clippy::too_many_arguments)]
 pub async fn create_new_auction(
     signer: EthSigner,
     auction_contract_address: Address,
@@ -54,7 +53,7 @@ pub async fn create_new_auction(
     // Create Auction
     let zk_auction_contract = zkAuctionContract::new(auction_contract_address, signer.into());
     let contract_caller = zk_auction_contract.create_auction(
-        Bytes::from(pbk_encryption.serialize()),
+        Bytes::from(pbk_encryption.to_bytes()),
         token_addr,
         nft_contract_address,
         token_id,
@@ -177,7 +176,6 @@ pub async fn create_bid(
     auction_id: U256,
     bid_price: u128,
 ) -> Result<()> {
-    // let auction = get_auction(signer.clone(), auction_contract_address, auction_id).await?;
     let (_, encryption_key, token_address, _, _, deposit_price, _, _) =
         get_auction(signer.clone(), auction_contract_address, auction_id).await?;
     if U256::from(bid_price) > deposit_price {
@@ -194,8 +192,7 @@ pub async fn create_bid(
     println!("Auction ID: {:?}", auction_id);
     println!("Tx: {:?}", approve_receipt.transaction_hash);
 
-    let encryption_key = PublicKey::parse((*encryption_key.to_vec()).try_into()?)
-        .expect("Wrong on-chain encryption key");
+    let encryption_key = PublicKey::from_bytes((*encryption_key.to_vec()).try_into()?);
     // Encrypted price
     let encrypted_price = encrypt_bidder_amount(&bid_price, &encryption_key);
 
@@ -247,17 +244,13 @@ pub async fn get_list_bids(
     Ok(list_bids)
 }
 
-/// Reveals the auction winner.
-///
-/// # Arguments
+/// Reveals the winner of an auction and submits the proof to the contract.
+/// 
+/// # Arguments 
 ///
 /// * `signer` - A `SignerMiddleware` configured for interacting with the blockchain and signing transactions.
 /// * `auction_contract_address` - The contract address of the auction platform.
 /// * `auction_id` - ID of the auction.
-/// * `wallet` - Wallet used to sign the winner's proof and other operations.
-/// * `rpc_url` - URL of the Ethereum node to connect to.
-/// * `network` - The network on which the auction is deployed (e.g., Ethereum mainnet or testnet).
-/// * `batcher_url` - URL of the batcher service for processing ZKP proofs.
 ///
 /// # Returns
 ///
@@ -273,10 +266,6 @@ pub async fn reveal_winner(
     signer: EthSigner,
     auction_contract_address: Address,
     auction_id: U256,
-    wallet: Wallet<SigningKey>,
-    rpc_url: &str,
-    network: Network,
-    batcher_url: &str,
 ) -> Result<()> {
     // Get list bids
     let bidders = get_list_bids(signer.clone(), auction_contract_address, auction_id)
@@ -289,15 +278,11 @@ pub async fn reveal_winner(
     //Send to SP1
     let mut auc_id = [0; 32];
     auction_id.to_big_endian(&mut auc_id);
-    let (winner_addr, winner_amount, verified_proof) = get_winner_and_submit_proof(
-        wallet,
+    let (winner_addr, winner_amount, public_input, proof) = find_winner(
         &AuctionData {
             bidders,
             id: auc_id.to_vec(),
-        },
-        rpc_url,
-        network,
-        batcher_url,
+        }
     )
     .await?;
 
@@ -309,7 +294,8 @@ pub async fn reveal_winner(
             winner: winner_addr,
             price: winner_amount,
         },
-        Bytes::from(verified_proof),
+        public_input,
+        proof,
     );
     let tx = contract_caller.send().await?;
     let receipt = tx.await?.unwrap();

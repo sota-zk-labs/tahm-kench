@@ -1,5 +1,3 @@
-contract_address = "0x666fdd363f32e3b0efac35739aa9e2ee52a4b50e"
+contract_address = "0x00b4d7aebd75f698cce5d3070efb3f0ac6c3dc3a"
 [chain]
 rpc_url = "https://ethereum-holesky-rpc.publicnode.com"
-network = "holesky"
-aligned_batcher_url = "wss://batcher.alignedlayer.com"
